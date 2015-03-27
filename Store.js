@@ -1,5 +1,11 @@
 /** @module delite/Store */
-define(["dcl/dcl", "decor/Invalidating"], function (dcl, Invalidating) {
+define([
+	"dcl/dcl",
+	"decor/Invalidating",
+	"requirejs-dplugins/Promise!",
+	"decor/ObservableArray",
+	"decor/Observable"
+], function (dcl, Invalidating, Promise, ObservableArray, Observable) {
 
 	/**
 	 * Dispatched once the query has been executed and the `renderItems` array
@@ -45,6 +51,7 @@ define(["dcl/dcl", "decor/Invalidating"], function (dcl, Invalidating) {
 		 * (to sort it, etc...). This processing is applied before potentially tracking the store
 		 * for modifications (if Trackable).
 		 * Changing this function on the instance will not automatically refresh the class.
+		 * Only works when using dstore/Store in store field (do not with ObservableArray)
 		 * @default identity function
 		 */
 		processQueryResult: function (store) { return store; },
@@ -120,18 +127,21 @@ define(["dcl/dcl", "decor/Invalidating"], function (dcl, Invalidating) {
 		 * @protected
 		 */
 		queryStoreAndInitItems: function (processQueryResult) {
-			this._untrack();
 			if (this.store != null) {
-				if (!this.store.filter && this.store instanceof HTMLElement && !this.store.attached) {
-					// this might a be a store custom element, wait for it
-					this.store.addEventListener("customelement-attached", this._attachedlistener = function () {
-						this.queryStoreAndInitItems(this.processQueryResult);
-					}.bind(this));
-				} else {
-					if (this._attachedlistener) {
-						this.store.removeEventListener("customelement-attached", this._attachedlistener);
+				var collection;
+				if (Array.isArray(this.store) === false) {
+					this._untrack();
+					if (!this.store.filter && this.store instanceof HTMLElement && !this.store.attached) {
+						// this might a be a store custom element, wait for it
+						this.store.addEventListener("customelement-attached", this._attachedlistener = function () {
+							this.queryStoreAndInitItems(this.processQueryResult);
+						}.bind(this));
+					} else {
+						if (this._attachedlistener) {
+							this.store.removeEventListener("customelement-attached", this._attachedlistener);
+						}
 					}
-					var collection = processQueryResult.call(this, this.store.filter(this.query));
+					collection = processQueryResult.call(this, this.store.filter(this.query));
 					if (collection.track) {
 						// user asked us to observe the store
 						collection = this._tracked = collection.track();
@@ -140,10 +150,105 @@ define(["dcl/dcl", "decor/Invalidating"], function (dcl, Invalidating) {
 						collection.on("delete", this._itemRemoved.bind(this));
 						collection.on("refresh", this._refreshHandler.bind(this));
 					}
-					return this.processCollection(collection);
+				} else {
+					for (var i = 0; i < this.store.length; i++) {
+						// affect the callback to the observe function if the item is observable
+						Observable.observe(this.store[i], this.observeCallback.bind(this));
+					}
+					collection = processQueryResult.call(this, this.store.filter(this._isQueried, this));
+					// affect the callback to the observe function if the array is observable
+					this._observeResult = ObservableArray.observe(this.store, this.observeCallback.bind(this));
 				}
+				return this.processCollection(collection);
 			} else {
 				this.initItems([]);
+			}
+		},
+
+		/**
+		 * Synchronously deliver change records of the Observe function for the Array
+		 * Do NOT deliver change records of the Observe function for Objects
+		 */
+		deliver: dcl.superCall(function (sup) {
+			return function () {
+				sup.call();
+				if (this._observeResult !== null && this._observeResult !== undefined) {
+					this._observeResult.deliver();
+				}
+			};
+		}),
+
+		/**
+		 * Called to verify if the item respect the query conditions
+		 * @param item
+		 * @protected
+		 */
+		_isQueried: function (item) {
+			for (var prop in this.query) {
+				if (item[prop] !== this.query[prop]) {
+					return false;
+				}
+			}
+			return true;
+		},
+
+		/**
+		 * Called when a modification is done on the array or its items.
+		 * @param changeRecords - send by the Observe function
+		 */
+		observeCallback: function (changeRecords) {
+			for (var i = 0; i < changeRecords.length; i++) {
+				// array modified
+				if (Array.isArray(changeRecords[i].object) === true) {
+					this.observeCallbackArray(changeRecords[i]);
+				// one item of the array modified
+				} else {
+					this.observeCallbackItems(changeRecords[i]);
+				}
+			}
+		},
+
+		/**
+		 * Called when a modification is done on the array.
+		 * @param changeRecords - send by the Observe function
+		 */
+		observeCallbackArray: function (change) {
+			if (change.type === "splice") {
+				var j;
+				for (j = 0; j < change.removed.length; j++) {
+					var evtRemoved = {previousIndex: change.index};
+					this._itemRemoved(evtRemoved);
+				}
+				for (j = 0; j < change.addedCount; j++) {
+					var evtAdded = {
+						index: change.index + j,
+						target: this.store[change.index + j]
+					};
+					if (this.renderItems !== null && this.renderItems !== undefined) {
+						evtAdded.index = evtAdded.index <= this.renderItems.length ?
+							evtAdded.index : this.renderItems.length;
+					}
+					// affect the callback to the observe function if the item is observable
+					Observable.observe(this.store[change.index + j], this.observeCallback.bind(this));
+					if (this._isQueried(evtAdded.target, this.query)) {
+						this._itemAdded(evtAdded);
+					}
+				}
+			}
+		},
+
+		/**
+		 * Called when a modification is done on the items.
+		 * @param changeRecords - send by the Observe function
+		 */
+		observeCallbackItems: function (change) {
+			if (change.type === "add" || change.type === "update" || change.type === "delete") {
+				var evtUpdated = {
+					index: this.store.indexOf(change.object),
+					previousIndex: this.store.indexOf(change.object),
+					target: change.object
+				};
+				this._itemUpdated(evtUpdated);
 			}
 		},
 
@@ -164,7 +269,34 @@ define(["dcl/dcl", "decor/Invalidating"], function (dcl, Invalidating) {
 		 * @protected
 		 */
 		fetch: function (collection) {
-			return collection.fetch();
+			if (Array.isArray(this.store) === false) {
+				return collection.fetch();
+			} else {
+				return Promise.resolve(collection);
+			}
+		},
+
+		/**
+		 * Called to perform the fetchRange operation on the collection.
+		 * @param {dstore/Collection} collection - Items to be displayed.
+		 * @protected
+		 */
+		fetchRange: function (collection, args) {
+			if (Array.isArray(this.store) === false) {
+				return collection.fetchRange(args);
+			} else {
+				var res = this.store.slice(args.start, args.end);
+				if (res.length < (args.end - args.start)) {
+					var promise;
+					var evt = {start: args.start, end: args.end, setPromise: function (pro) {
+						promise = pro;
+					}};
+					this.emit("new-query-asked", evt);
+					return promise;
+				} else {
+					return Promise.resolve(res);
+				}
+			}
 		},
 
 		_queryError: function (error) {
@@ -176,6 +308,9 @@ define(["dcl/dcl", "decor/Invalidating"], function (dcl, Invalidating) {
 			if (this._tracked) {
 				this._tracked.tracking.remove();
 				this._tracked = null;
+			}
+			if (this._observeResult != null) {
+				this._observeResult.remove();
 			}
 		},
 
@@ -301,6 +436,20 @@ define(["dcl/dcl", "decor/Invalidating"], function (dcl, Invalidating) {
 				this.notifyCurrentValue("renderItems");
 			}
 			// if no index the item is added outside of the range we monitor so we don't care
+		},
+
+		/**
+		 * Returns the identity of an item.
+		 * @param {Object} item The item
+		 * @returns {Object}
+		 * @protected
+		 */
+		getIdentity: function (item) {
+			if (Array.isArray(this.store) === false) {
+				return this.store.getIdentity(item);
+			} else {
+				return item.id;
+			}
 		}
 	});
 });

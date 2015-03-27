@@ -1,5 +1,5 @@
 /** @module delite/StoreMap */
-define(["dcl/dcl", "./Store"], function (dcl, Store) {
+define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store"], function (dcl, Promise, Store) {
 
 	var getvalue = function (map, item, key, store) {
 		if (map[key + "Func"]) {
@@ -153,14 +153,40 @@ define(["dcl/dcl", "./Store"], function (dcl, Store) {
 		renderItemToItem: function (renderItem) {
 			var tmp = {}, store = this.store;
 			// special id case
-			tmp[store.idProperty] = renderItem.id;
+			if (Array.isArray(store) === false) {
+				tmp[store.idProperty] = renderItem.id;
+			} else {
+				tmp.id = renderItem.id;
+			}
 			for (var key in renderItem) {
 				setvalue(this, tmp, key, store, renderItem[key]);
 			}
-			return store.get(renderItem[store.idProperty]).then(function (item) {
+			return this._getItemById(tmp.id, renderItem, store).then(function (item) {
 				dcl.mix(item, tmp);
 				return item;
 			});
+		},
+
+		/**
+		 * Gets an item of the store by its id
+		 * @param id
+		 * @param renderItem
+		 * @param store
+		 * @returns {Promise}
+		 * @private
+		 */
+		_getItemById: function (id, renderItem, store) {
+			if (Array.isArray(store) === false) {
+				return store.get(renderItem[store.idProperty]);
+			} else {
+				var res = store[0];
+				var	i = 1;
+				while (res.id !== id) {
+					res = store[i];
+					i++;
+				}
+				return Promise.resolve(res);
+			}
 		},
 
 		/**
@@ -180,16 +206,20 @@ define(["dcl/dcl", "./Store"], function (dcl, Store) {
 			// we might need it in other context as well
 			renderItem.__item = item;
 
-			// special id case
-			var id = store.getIdentity(item);
-			// Warning: we are using private API from dstore/Store here so let's do that conditionally
-			// the purpose is to workaround the fact in some cases the store might miss the ID and we don't
-			// want to bother people about that.
-			if (id == null && store._setIdentity) {
-				store._setIdentity(item, Math.random());
+			if (Array.isArray(this.store) === false) {
+				// special id case
+				var id = store.getIdentity(item);
+				// Warning: we are using private API from dstore/Store here so let's do that conditionally
+				// the purpose is to workaround the fact in some cases the store might miss the ID and we don't
+				// want to bother people about that.
+				if (id == null && store._setIdentity) {
+					store._setIdentity(item, Math.random());
+				}
+				renderItem.id = store.getIdentity(item);
+			} else {
+				renderItem.id = item.id ? item.id : store.indexOf(item);
 			}
-			renderItem.id = store.getIdentity(item);
-			// general mapping case
+				// general mapping case
 			for (var i = 0; i < mappedKeys.length; i++) {
 				renderItem[mappedKeys[i]] = getvalue(this, item, mappedKeys[i], store);
 			}
@@ -200,7 +230,6 @@ define(["dcl/dcl", "./Store"], function (dcl, Store) {
 					}
 				}
 			}
-
 			return renderItem;
 		},
 
