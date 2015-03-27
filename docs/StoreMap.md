@@ -6,8 +6,8 @@ title: delite/StoreMap
 # delite/StoreMap
 
 `delite/StoreMap` is a mixin that can be mixed into a class inheriting from [`delite/Widget`](Widget.md) or `decor/Evented`
-in order to query a store object from the [dstore](http://dstorejs.io/) project, create render items for this widget 
-based on the store items, and perform some automatic mapping between the properties on the store items and the 
+in order to query a store object from the [dstore](http://dstorejs.io/) project or an array, create render items for this widget
+based on the store or the array items, and perform some automatic mapping between the properties on the store items and the
 properties on the render items.
 
 This is particularly useful for a widget that needs to create items (or render items) based on store entries
@@ -17,6 +17,9 @@ your widget is expecting on the render items.
 
 This mixin is based on the `delite/Store` mixin which provides the store access and ability to create render items. Please
 see [its documentation](Store.md) for details about those features.
+
+Note : One must use items which contains an id property to be able to use all the function of `delite/StoreMap` correctly.
+In particular when one uses array in the store property of the `delite/StoreMap`.
 
 ## Mapping properties and mapping functions
 
@@ -131,8 +134,7 @@ require(["EmployeesList"/*, ...*/], function (EmployeesList/*, ...*/) {
         item.jobDescription = array[1];
      } else {
        return item.title + " " + items.jobDescription;
-     } 
-    
+     }
   }
   widget.placeAt(document.body);
 });

@@ -1,28 +1,26 @@
 define([
 	"intern!object",
 	"intern/chai!assert", "dcl/dcl", "dojo/_base/declare",
-	"delite/register", "delite/Widget", "delite/Store",
-	"dstore/Trackable", "dstore/Rest", "dstore/Memory"
-], function (registerSuite, assert, dcl, declare, register, Widget, Store, Trackable, Rest, Memory) {
-	var C = register("test-store", [HTMLElement, Widget, Store]);
-	var M = declare([Memory, Trackable], {});
+	"delite/register", "delite/Widget", "delite/Store", "decor/ObservableArray"
+], function (registerSuite, assert, dcl, declare, register, Widget, Store, ObservableArray) {
+	var C = register("test-store-arrayobs", [HTMLElement, Widget, Store]);
 	registerSuite({
-		name: "Store",
-/*
-// commented out until https://github.com/ibm-js/delite/issues/93 fixed
-		"Error" : function () {
-			var d = this.async(2000);
-			var store = new C();
-			var callbackCalled = false;
-			store.on("query-error", function () {
-				// should fire before the timeout
-				d.resolve();
-			});
-			store.attachedCallback();
-			store.store = new Rest({ target: "/" });
-			return d;
-		},
-*/
+		name: "Store-ArrayObs",
+		/*
+		 // commented out until https://github.com/ibm-js/delite/issues/93 fixed
+		 "Error" : function () {
+		 var d = this.async(2000);
+		 var store = new C();
+		 var callbackCalled = false;
+		 store.on("query-error", function () {
+		 // should fire before the timeout
+		 d.resolve();
+		 });
+		 store.attachedCallback();
+		 store.store = new Rest({ target: "/" });
+		 return d;
+		 },
+		 */
 
 		Updates: function () {
 			var d = this.async(1500);
@@ -40,37 +38,37 @@ define([
 				assert.strictEqual(store.renderItems.length, 2);
 				assert.deepEqual(store.renderItems[0], myData[0]);
 				assert.deepEqual(store.renderItems[1], myData[1]);
-				myStore.putSync({ id: "foo", name: "Foo2" });
-				// this works because put is synchronous & same for add etc...
+				assert.strictEqual(refreshRenderingCallCount, 1, "before store.set");
+				store.store.set(0, { id: "foo", name: "Foo2" });
+				store.deliver();
 				assert.strictEqual(store.renderItems.length, 2);
 				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo2" });
 				assert.deepEqual(store.renderItems[1], { id: "bar", name: "Bar" });
+				assert.strictEqual(refreshRenderingCallCount, 2, "after store.set");
+				store.store.push({ id: "fb", name: "FB" });
 				store.deliver();
-				assert.strictEqual(refreshRenderingCallCount, 1, "after store.put");
-				myStore.addSync({ id: "fb", name: "FB" });
 				assert.strictEqual(store.renderItems.length, 3);
 				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo2" });
 				assert.deepEqual(store.renderItems[1], { id: "bar", name: "Bar" });
 				assert.deepEqual(store.renderItems[2], { id: "fb", name: "FB" });
+				assert.strictEqual(refreshRenderingCallCount, 3, "after store.add");
+				store.store.splice(1, 1);
 				store.deliver();
-				assert.strictEqual(refreshRenderingCallCount, 2, "after store.add");
-				myStore.removeSync("bar");
 				assert.strictEqual(store.renderItems.length, 2);
 				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo2" });
 				assert.deepEqual(store.renderItems[1], { id: "fb", name: "FB" });
-				store.deliver();
-				assert.strictEqual(refreshRenderingCallCount, 3, "after store.remove");
+				assert.strictEqual(refreshRenderingCallCount, 4, "after store.remove");
 			}));
-			// use empty model to easy comparison
-			var myStore = new M({ data: myData, model: null});
-			store.store = myStore;
+			store.store = new ObservableArray({ id: "foo", name: "Foo" },
+				{ id: "bar", name: "Bar" });
 			return d;
 		},
 
 		NullStore: function () {
 			var d = this.async(1500);
 			var store = new C({
-				store: new M({ data: [{id: "foo", name: "Foo" }], model: null})
+				store: new ObservableArray({ id: "foo", name: "Foo" },
+					{ id: "bar", name: "Bar" })
 			});
 			setTimeout(d.rejectOnError(function () {
 				store.on("query-success", d.callback(function () {
@@ -97,23 +95,24 @@ define([
 				assert.deepEqual(store.renderItems[1], myData[1]);
 				// we destroy the store, we should not get any notification after that
 				store.destroy();
-				myStore.putSync({ id: "foo", name: "Foo2" });
-				// this works because put is synchronous & same for add etc...
+				store.store.push({ id: "foo", name: "Foo2" });
+				store.deliver();
 				assert.strictEqual(store.renderItems.length, 2);
 				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo" });
 				assert.deepEqual(store.renderItems[1], { id: "bar", name: "Bar" });
-				myStore.addSync({ id: "fb", name: "FB" });
+				store.store.push({ id: "fb", name: "FB" });
+				store.deliver();
 				assert.strictEqual(store.renderItems.length, 2);
 				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo" });
 				assert.deepEqual(store.renderItems[1], { id: "bar", name: "Bar" });
-				myStore.removeSync("bar");
+				store.store.splice(1, 1);
+				store.deliver();
 				assert.strictEqual(store.renderItems.length, 2);
 				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo" });
 				assert.deepEqual(store.renderItems[1], { id: "bar", name: "Bar" });
 			}));
-			// use empty model to easy comparison
-			var myStore = new M({ data: myData, model: null });
-			store.store = myStore;
+			store.store = new ObservableArray({ id: "foo", name: "Foo" },
+				{ id: "bar", name: "Bar" });
 			return d;
 		},
 
@@ -129,53 +128,35 @@ define([
 				assert(store.renderItems instanceof Array);
 				assert.strictEqual(store.renderItems.length, 1);
 				assert.deepEqual(store.renderItems[0], myData[0]);
-				myStore.putSync({ id: "foo", name: "Foo2" });
+				store.store.push({ id: "foo", name: "Foo2" });
+				store.deliver();
 				// this works because put is synchronous & same for add etc...
-				assert.strictEqual(store.renderItems.length, 1);
-				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo2" });
-				myStore.addSync({ id: "fb", name: "FB" });
-				assert.strictEqual(store.renderItems.length, 1);
-				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo2" });
-				myStore.removeSync("bar");
-				assert.strictEqual(store.renderItems.length, 1);
-				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo2" });
+				assert.strictEqual(store.renderItems.length, 2);
+				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo" });
+				assert.deepEqual(store.renderItems[1], { id: "foo", name: "Foo2" });
+				store.store.push({ id: "fb", name: "FB" });
+				store.deliver();
+				assert.strictEqual(store.renderItems.length, 2);
+				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo" });
+				assert.deepEqual(store.renderItems[1], { id: "foo", name: "Foo2" });
 			}));
-			// use empty model to easy comparison
-			var myStore = new M({ data: myData, model: null });
-			store.store = myStore;
+			store.store = new ObservableArray({ id: "foo", name: "Foo" },
+				{ id: "bar", name: "Bar" });
 			return d;
 		},
 
 		StoreFuncRange: function () {
-			var d = this.async(15000);
+			var d = this.async(1500);
 			var store = new C();
 			store.fetch = function (collection) {
-				return collection.fetchRange({start: 0, end: 1});
+				return store.fetchRange(collection, {start: 0, end: 1});
 			};
-			var myData = [
-				{ id: "foo", name: "Foo" },
-				{ id: "bar", name: "Bar" }
-			];
 			store.on("query-success", d.callback(function () {
 				assert(store.renderItems instanceof Array);
 				assert.strictEqual(store.renderItems.length, 1);
-				// all of this makes no sense to test until we have range management implemented directly
-				// in delite/Store
-				/*
-				myStore.putSync({ id: "foo", name: "Foo2" });
-				assert.strictEqual(store.renderItems.length, 1);
-				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo2" });
-				myStore.addSync({ id: "fb", name: "FB" });
-				assert.strictEqual(store.renderItems.length, 2);
-				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo2" });
-				assert.deepEqual(store.renderItems[1], { id: "fb", name: "FB" });
-				myStore.removeSync("bar");
-				assert.strictEqual(store.renderItems.length, 2);
-				*/
 			}));
-			// use empty model to easy comparison
-			var myStore = new M({ data: myData, model: null });
-			store.store = myStore;
+			store.store = new ObservableArray({ id: "foo", name: "Foo" },
+				{ id: "bar", name: "Bar" });
 			return d;
 		},
 
@@ -183,39 +164,48 @@ define([
 			var d = this.async(1500);
 			var store = new C();
 			store.processQueryResult = function (store) {
-				return store.sort("index");
+				return store.sort(function (a, b) {
+					if (a.index > b.index) {
+						return 1;
+					}
+					if (a.index < b.index) {
+						return -1;
+					}
+					return 0;
+				});
 			};
 			var myData = [
-				{ id: "foo", name: "Foo", index: 0 },
-				{ id: "bar", name: "Bar", index: 1 }
+				{ id: "foo", name: "Foo", index: 1 },
+				{ id: "bar", name: "Bar", index: 0 }
 			];
 			store.on("query-success", d.callback(function () {
 				assert(store.renderItems instanceof Array);
 				assert.strictEqual(store.renderItems.length, 2);
-				assert.deepEqual(store.renderItems[0], myData[0]);
-				assert.deepEqual(store.renderItems[1], myData[1]);
-				var item = myStore.getSync("foo");
-				item.index = 2;
-				myStore.putSync(item);
-				// this works because put is synchronous
-				assert.deepEqual(store.renderItems[0], { id: "bar", name: "Bar", index: 1 });
-				assert.deepEqual(store.renderItems[1], { id: "foo", name: "Foo", index: 2 });
-				item = myStore.getSync("foo");
-				item.index = 0;
-				myStore.putSync(item);
-				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo", index: 0 });
-				assert.deepEqual(store.renderItems[1], { id: "bar", name: "Bar", index: 1 });
+				assert.deepEqual(store.renderItems[0], myData[1]);
+				assert.deepEqual(store.renderItems[1], myData[0]);
+				//var item = store.store[0];
+				//item.index = 2;
+				//store.store.push(item);
+				//store.deliver();
+				//// this works because put is synchronous
+				//assert.deepEqual(store.renderItems[0], { id: "bar", name: "Bar", index: 1 });
+				//assert.deepEqual(store.renderItems[1], { id: "foo", name: "Foo", index: 2 });
+				//item = store.store[1];
+				//item.index = 0;
+				//store.store.push(item);
+				//store.deliver();
+				//assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo", index: 0 });
+				//assert.deepEqual(store.renderItems[1], { id: "bar", name: "Bar", index: 1 });
 			}));
 			// use empty model to easy comparison
-			var myStore = new M({ data: myData, model: null });
-			store.store = myStore;
+			store.store = new ObservableArray({ id: "foo", name: "Foo", index: 1 },
+				{ id: "bar", name: "Bar", index: 0 });
 			return d;
 		},
 
 		// TODO: re-enable when dstore will have re-introduced refresh event?
 
-		/**
-		SetData: function () {
+		SetNewStore: function () {
 			var d = this.async(1500);
 			var store = new C();
 			var myData = [
@@ -231,9 +221,7 @@ define([
 					assert.deepEqual(store.renderItems[0], myData[0]);
 					assert.deepEqual(store.renderItems[1], myData[1]);
 					// this will issue the query again
-					myStore.setData([
-						{ id: "another", name: "Another" }
-					]);
+					store.store = new ObservableArray({ id: "another", name: "Another" });
 				} else {
 					assert.strictEqual(store.renderItems.length, 1);
 					assert.deepEqual(store.renderItems[0], { id: "another", name: "Another" });
@@ -242,13 +230,14 @@ define([
 			}));
 			store.attachedCallback();
 			// use empty model to easy comparison
-			var myStore = new M({ data: myData, model: null });
-			store.store = myStore;
+			store.store = new ObservableArray({ id: "foo", name: "Foo" },
+				 { id: "bar", name: "Bar" });
 			return d;
-		},**/
+		},
 
 		teardown: function () {
 			//container.parentNode.removeChild(container);
 		}
 	});
 });
+
