@@ -34,20 +34,6 @@ define(["dcl/dcl", "decor/Invalidating", 'requirejs-dplugins/Promise!'], functio
 		store: null,
 
 		/**
-		 * The Array that contains the items to display.
-		 * @member {Object}
-		 * @default null
-		 */
-		array: null,
-
-		/**
-		 * Boolean to know if the items to display are in a dstore/Store or an Array.
-		 * @member {Object}
-		 * @default null
-		 */
-		isDstoreType: false,
-
-		/**
 		 * A query filter to apply to the store.
 		 * @member {Object}
 		 * @default {}
@@ -62,15 +48,6 @@ define(["dcl/dcl", "decor/Invalidating", 'requirejs-dplugins/Promise!'], functio
 		 * @default identity function
 		 */
 		processQueryResult: function (store) { return store; },
-
-		/**
-		 * A function that processes the collection returned by the store query and returns a new collection
-		 * (to sort it, etc...). This processing is applied before potentially tracking the store
-		 * for modifications (if Trackable).
-		 * Changing this function on the instance will not automatically refresh the class.
-		 * @default identity function
-		 */
-		processQueryResultArray: function (array) { return array; },
 
 		/**
 		 * The render items corresponding to the store items for this widget. This is filled from the store and
@@ -124,15 +101,9 @@ define(["dcl/dcl", "decor/Invalidating", 'requirejs-dplugins/Promise!'], functio
 		 * @protected
 		 */
 		computeProperties: function (props) {
-			if (this.isDstoreType === true) {
 				if ("store" in props || "query" in props) {
 					this.queryStoreAndInitItems(this.processQueryResult);
 				}
-			} else {
-				if ("array" in props || "query" in props) {
-					this.queryStoreAndInitItems(this.processQueryResultArray);
-				}
-			}
 		},
 
 		/**
@@ -150,7 +121,7 @@ define(["dcl/dcl", "decor/Invalidating", 'requirejs-dplugins/Promise!'], functio
 		 */
 		queryStoreAndInitItems: function (processQueryResult) {
 			this._untrack();
-			if (this.isDstoreType === true) {
+			if (Array.isArray(this.store) === false) {
 				if (this.store != null) {
 					if (!this.store.filter && this.store instanceof HTMLElement && !this.store.attached) {
 						// this might a be a store custom element, wait for it
@@ -176,8 +147,8 @@ define(["dcl/dcl", "decor/Invalidating", 'requirejs-dplugins/Promise!'], functio
 					this.initItems([]);
 				}
 			} else {
-				if (this.array != null) {
-					var collection = this.array;
+				if (this.store != null) {
+					var collection = this.store;
 					return this.processCollection(collection);
 				}
 			}
@@ -200,7 +171,7 @@ define(["dcl/dcl", "decor/Invalidating", 'requirejs-dplugins/Promise!'], functio
 		 * @protected
 		 */
 		fetch: function (collection) {
-			if (this.isDstoreType === true) {
+			if (Array.isArray(this.store) === false) {
 				return collection.fetch();
 			} else {
 				return Promise.resolve(collection);
