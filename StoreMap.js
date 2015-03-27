@@ -11,6 +11,16 @@ define(["dcl/dcl", "./Store"], function (dcl, Store) {
 		}
 	};
 
+	var getvalueArray = function (map, item, key, array) {
+		if (map[key + "Func"]) {
+			return map[key + "Func"](item, array);
+		} else if (map[key + "Attr"]) {
+			return item[map[key + "Attr"]];
+		} else {
+			return item[key];
+		}
+	};
+
 	var setvalue = function (map, item, key, store, value) {
 		if (map[key + "Func"]) {
 			map[key + "Func"](item, store, value);
@@ -170,38 +180,61 @@ define(["dcl/dcl", "./Store"], function (dcl, Store) {
 		 * @protected
 		 */
 		itemToRenderItem: function (item) {
-			var renderItem = {};
-			var mappedKeys = this._mappedKeys;
-			var store = this.store;
+			if (this.isDstoreType === true) {
+				var renderItem = {};
+				var mappedKeys = this._mappedKeys;
+				var store = this.store;
 
-			// if we allow remap we need to store the initial item
-			// we need this to be enumerable for dealing with update case (where only enumerable
-			// properties are copied)
-			// we might need it in other context as well
-			renderItem.__item = item;
+				// if we allow remap we need to store the initial item
+				// we need this to be enumerable for dealing with update case (where only enumerable
+				// properties are copied)
+				// we might need it in other context as well
+				renderItem.__item = item;
 
-			// special id case
-			var id = store.getIdentity(item);
-			// Warning: we are using private API from dstore/Store here so let's do that conditionally
-			// the purpose is to workaround the fact in some cases the store might miss the ID and we don't
-			// want to bother people about that.
-			if (id == null && store._setIdentity) {
-				store._setIdentity(item, Math.random());
-			}
-			renderItem.id = store.getIdentity(item);
-			// general mapping case
-			for (var i = 0; i < mappedKeys.length; i++) {
-				renderItem[mappedKeys[i]] = getvalue(this, item, mappedKeys[i], store);
-			}
-			if (this.copyAllItemProps) {
-				for (var key in item) {
-					if (this._itemKeys.indexOf(key) === -1 && item.hasOwnProperty(key)) {
-						renderItem[key] = item[key];
+				// special id case
+				var id = store.getIdentity(item);
+				// Warning: we are using private API from dstore/Store here so let's do that conditionally
+				// the purpose is to workaround the fact in some cases the store might miss the ID and we don't
+				// want to bother people about that.
+				if (id == null && store._setIdentity) {
+					store._setIdentity(item, Math.random());
+				}
+				renderItem.id = store.getIdentity(item);
+				// general mapping case
+				for (var i = 0; i < mappedKeys.length; i++) {
+					renderItem[mappedKeys[i]] = getvalue(this, item, mappedKeys[i], store);
+				}
+				if (this.copyAllItemProps) {
+					for (var key in item) {
+						if (this._itemKeys.indexOf(key) === -1 && item.hasOwnProperty(key)) {
+							renderItem[key] = item[key];
+						}
 					}
 				}
-			}
 
-			return renderItem;
+				return renderItem;
+			} else {
+				var renderItem = {};
+				var mappedKeys = this._mappedKeys;
+				var array = this.array;
+
+				renderItem.__item = item;
+
+				renderItem.id = array.indexOf(item);
+
+				for (var i = 0; i < mappedKeys.length; i++) {
+					renderItem[mappedKeys[i]] = getvalueArray(this, item, mappedKeys[i], array);
+				}
+				if (this.copyAllItemProps) {
+					for (var key in item) {
+						if (this._itemKeys.indexOf(key) === -1 && item.hasOwnProperty(key)) {
+							renderItem[key] = item[key];
+						}
+					}
+				}
+
+				return renderItem;
+			}
 		},
 
 		/**
