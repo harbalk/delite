@@ -178,6 +178,15 @@ define(["dcl/dcl", "decor/Invalidating", 'requirejs-dplugins/Promise!'], functio
 			}
 		},
 
+		fetchRange: function(collection, args) {
+			if (Array.isArray(this.store) === false) {
+				return collection.fetchRange(args);
+			} else {
+				var res = this.store.slice(args.start, args.end);
+				return Promise.resolve(res);
+			}
+		},
+
 		_queryError: function (error) {
 			console.log(error);
 			this.emit("query-error", { error: error, cancelable: false, bubbles: true });
