@@ -183,6 +183,10 @@ define(["dcl/dcl", "decor/Invalidating", 'requirejs-dplugins/Promise!'], functio
 				return collection.fetchRange(args);
 			} else {
 				var res = this.store.slice(args.start, args.end);
+				if (res.length < this.pageLength) {
+					this.emit("new-query-asked");
+				}
+				res = this.store.slice(args.start, args.end);
 				return Promise.resolve(res);
 			}
 		},

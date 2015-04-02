@@ -243,7 +243,7 @@ define([
 				cancelable: false
 			});
 		}),
-		
+
 		/**
 		 * Called when the element is removed the document.
 		 * This method is automatically chained, so subclasses generally do not need to use `dcl.superCall()`,
