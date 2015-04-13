@@ -1,5 +1,5 @@
 /** @module delite/Store */
-define(["dcl/dcl", "decor/Invalidating", 'requirejs-dplugins/Promise!'], function (dcl, Invalidating, Promise) {
+define(["dcl/dcl", "decor/Invalidating", 'requirejs-dplugins/Promise!', "delite/ObservableArray"], function (dcl, Invalidating, Promise, ObservableArray) {
 
 	/**
 	 * Dispatched once the query has been executed and the `renderItems` array
@@ -149,6 +149,20 @@ define(["dcl/dcl", "decor/Invalidating", 'requirejs-dplugins/Promise!'], functio
 			} else {
 				if (this.store != null) {
 					var collection = this.store;
+					ObservableArray.observe(this.store, function (changeRecords) {
+						for (var i = 0; i < changeRecords.length; i++) {
+							if (changeRecords[i].type === "splice"){
+								this.initItems(collection);
+							} else if (changeRecords[i].type === "add") {
+								this._itemAdded.bind(this);
+							} else if (changeRecords[i].type === "update") {
+								this._itemUpdated.bind(this);
+							} else if (changeRecords[i].type === "delete") {
+								this._itemRemoved.bind(this);
+							}
+						}
+						return this.processCollection(collection);
+					}.bind(this));
 					return this.processCollection(collection);
 				}
 			}
