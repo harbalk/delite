@@ -148,20 +148,29 @@ define(["dcl/dcl", "decor/Invalidating", 'requirejs-dplugins/Promise!', "delite/
 				}
 			} else {
 				if (this.store != null) {
+					//this.initItems(this.store);
 					var collection = this.store;
 					ObservableArray.observe(this.store, function (changeRecords) {
+						console.log(changeRecords);
 						for (var i = 0; i < changeRecords.length; i++) {
-							if (changeRecords[i].type === "splice"){
-								this.initItems(collection);
-							} else if (changeRecords[i].type === "add") {
-								this._itemAdded.bind(this);
-							} else if (changeRecords[i].type === "update") {
-								this._itemUpdated.bind(this);
-							} else if (changeRecords[i].type === "delete") {
-								this._itemRemoved.bind(this);
+							if (changeRecords[i].type === "splice") {
+								//this.initItems(collection);
+								for (var j = 0; j < changeRecords[i].removed.length; j++) {
+									this.itemRemoved(changeRecords[i].index, this.renderItems);
+								}
+								for (var j = 0; j < changeRecords[i].addedCount; j++) {
+									this.itemAdded(changeRecords[i].index + j, this.itemToRenderItem(this.store[changeRecords[i].index + j]));
+								}
+								this.notifyCurrentValue("renderItems");
+							//} else if (changeRecords[i].type === "add") {
+							//	this.itemAdded.bind(this);
+							//} else if (changeRecords[i].type === "update") {
+							//	this.itemUpdated.bind(this);
+							//} else if (changeRecords[i].type === "delete") {
+							//	this.itemRemoved.bind(this);
 							}
 						}
-						return this.processCollection(collection);
+						//return this.processCollection(collection);
 					}.bind(this));
 					return this.processCollection(collection);
 				}
