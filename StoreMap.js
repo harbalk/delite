@@ -153,7 +153,7 @@ define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store"], function (dcl, Pro
 		renderItemToItem: function (renderItem) {
 			var tmp = {}, store = this.store;
 			// special id case
-			if (Array.isArray(store) === false) {
+			if (!Array.isArray(store)) {
 				tmp[store.idProperty] = renderItem.id;
 			} else {
 				tmp.id = renderItem.id;
@@ -176,7 +176,7 @@ define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store"], function (dcl, Pro
 		 * @private
 		 */
 		_getItemById: function (id, renderItem, store) {
-			if (Array.isArray(store) === false) {
+			if (!Array.isArray(store)) {
 				return store.get(renderItem[store.idProperty]);
 			} else {
 				var res = store[0];
@@ -206,7 +206,7 @@ define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store"], function (dcl, Pro
 			// we might need it in other context as well
 			renderItem.__item = item;
 
-			if (Array.isArray(this.store) === false) {
+			if (!Array.isArray(this.store)) {
 				// special id case
 				var id = store.getIdentity(item);
 				// Warning: we are using private API from dstore/Store here so let's do that conditionally
@@ -219,7 +219,7 @@ define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store"], function (dcl, Pro
 			} else {
 				renderItem.id = item.id ? item.id : store.indexOf(item);
 			}
-				// general mapping case
+			// general mapping case
 			for (var i = 0; i < mappedKeys.length; i++) {
 				renderItem[mappedKeys[i]] = getvalue(this, item, mappedKeys[i], store);
 			}

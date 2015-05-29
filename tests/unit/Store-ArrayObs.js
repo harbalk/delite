@@ -235,6 +235,34 @@ define([
 			return d;
 		},
 
+		"Deliver, DiscardChanges": function () {
+			var d = this.async(2000);
+			var store = new C();
+			var myData = [
+				{id: "foo", name: "Foo"},
+				{id: "bar", name: "Bar"}
+			];
+			store.on("query-success", d.callback(function () {
+				assert(store.renderItems instanceof Array);
+				assert.strictEqual(store.renderItems.length, 2);
+				assert.deepEqual(store.renderItems[0], myData[0]);
+				assert.deepEqual(store.renderItems[1], myData[1]);
+				store.store.set(0, { id: "foo", name: "Foo2" });
+				store.deliver();
+				assert.strictEqual(store.renderItems.length, 2);
+				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo2" });
+				assert.deepEqual(store.renderItems[1], { id: "bar", name: "Bar" });
+				store.store.push({ id: "fb", name: "FB" });
+				store.discardChanges();
+				assert.strictEqual(store.renderItems.length, 2);
+				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo2" });
+				assert.deepEqual(store.renderItems[1], { id: "bar", name: "Bar" });
+			}));
+			store.store = new ObservableArray({id: "foo", name: "Foo"},
+				{id: "bar", name: "Bar"});
+			return d;
+		},
+
 		teardown: function () {
 			//container.parentNode.removeChild(container);
 		}
