@@ -249,10 +249,7 @@ define([
 				store.renderItemToItem(store.renderItems[0]).then(d.callback(function (item) {
 					assert.deepEqual(item, store.store[0]);
 					var renderItem = store.itemToRenderItem(item);
-					assert.deepEqual(renderItem, {
-						id: "foo", foo: "Foo", bar: "1",
-						__item: store.store[0]
-					});
+					assert.deepEqual(renderItem, {id: "foo", foo: "Foo", bar: "1", __item: store.store[0]});
 				}));
 			}));
 			store.placeAt(container);
