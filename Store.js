@@ -1,11 +1,12 @@
 /** @module delite/Store */
 define([
 	"dcl/dcl",
+	"requirejs-dplugins/has",
 	"decor/Invalidating",
 	"requirejs-dplugins/Promise!",
 	"decor/ObservableArray",
 	"decor/Observable"
-], function (dcl, Invalidating, Promise, ObservableArray, Observable) {
+], function (dcl, has, Invalidating, Promise, ObservableArray, Observable) {
 
 	/**
 	 * Dispatched once the query has been executed and the `renderItems` array
@@ -129,7 +130,7 @@ define([
 		queryStoreAndInitItems: function (processQueryResult) {
 			if (this.store != null) {
 				var collection;
-				if (Array.isArray(this.store) === false) {
+				if (!Array.isArray(this.store)) {
 					this._untrack();
 					if (!this.store.filter && this.store instanceof HTMLElement && !this.store.attached) {
 						// this might a be a store custom element, wait for it
@@ -152,12 +153,22 @@ define([
 					}
 				} else {
 					for (var i = 0; i < this.store.length; i++) {
-						// affect the callback to the observe function if the item is observable
-						Observable.observe(this.store[i], this.observeCallback.bind(this));
+						if (this._isItemObservable(this.store[i])) {
+							this._hasItemObservable = true;
+							this._observeResults =  [];
+							// affect the callback to the observe function if the item is observable
+							this._observeResults[i + 1] = Observable.observe(this.store[i],
+								this.observeCallback.bind(this));
+						}
 					}
 					collection = processQueryResult.call(this, this.store.filter(this._isQueried, this));
-					// affect the callback to the observe function if the array is observable
-					this._observeResult = ObservableArray.observe(this.store, this.observeCallback.bind(this));
+					if (this._isArrayObservable(this.store)) {
+						if (!this._observeResults) {
+							this._observeResults = [];
+						}
+						// affect the callback to the observe function if the array is observable
+						this._observeResults[0] = ObservableArray.observe(this.store, this.observeCallback.bind(this));
+					}
 				}
 				return this.processCollection(collection);
 			} else {
@@ -166,22 +177,60 @@ define([
 		},
 
 		/**
-		 * Synchronously deliver change records of the Observe function for the Array
-		 * Do NOT deliver change records of the Observe function for Objects
+		 * Synchronously deliver change records to all listeners registered via `observe()`.
 		 */
 		deliver: dcl.superCall(function (sup) {
 			return function () {
 				sup.call();
-				if (this._observeResult !== null && this._observeResult !== undefined) {
-					this._observeResult.deliver();
+				if (this._observeResults) {
+					this._observeResults[0].deliver();
+					if (this._hasItemObservable) {
+						this.observeCallback && Observable.deliverChangeRecords(this.observeCallback);
+					}
 				}
 			};
 		}),
 
 		/**
+		 * Discard change records for all listeners registered via `observe()`.
+		 */
+		discardChanges: dcl.superCall(function (sup) {
+			return function () {
+				sup.call();
+				if (this._observeResults) {
+					this._beingDiscarded = true;
+					this._observeResults[0].deliver();
+					if (this._hasItemObservable === true) {
+						this.observeCallback && Observable.deliverChangeRecords(this.observeCallback);
+					}
+					this._beingDiscarded = false;
+					return this.store;
+				}
+			};
+		}),
+
+		/**
+		 * Called to verify if an item is observable
+		 * @param item
+		 * @private
+		 */
+		_isItemObservable: function (item) {
+			return (Observable.test(item) || has("object-observe-api"));
+		},
+
+		/**
+		 * Called to verify if the array is observable
+		 * @param item
+		 * @private
+		 */
+		_isArrayObservable: function (item) {
+			return (ObservableArray.test(item) || has("object-observe-api"));
+		},
+
+		/**
 		 * Called to verify if the item respect the query conditions
 		 * @param item
-		 * @protected
+		 * @private
 		 */
 		_isQueried: function (item) {
 			for (var prop in this.query) {
@@ -197,13 +246,24 @@ define([
 		 * @param changeRecords - send by the Observe function
 		 */
 		observeCallback: function (changeRecords) {
-			for (var i = 0; i < changeRecords.length; i++) {
-				// array modified
-				if (Array.isArray(changeRecords[i].object) === true) {
-					this.observeCallbackArray(changeRecords[i]);
-				// one item of the array modified
-				} else {
-					this.observeCallbackItems(changeRecords[i]);
+			if (!this._beingDiscarded) {
+				for (var i = 0; i < changeRecords.length; i++) {
+					// array modified
+					if (Array.isArray(changeRecords[i].object)) {
+						this.observeCallbackArray(changeRecords[i]);
+						// one item of the array modified
+					} else {
+						var found = false;
+						for (var j = i + 1; j < changeRecords.length; j++) {
+							if (changeRecords[j].object === changeRecords[i].object) {
+								found = true;
+								changeRecords[j].oldValue = changeRecords[i].oldValue;
+							}
+						}
+						if (!found) {
+							this.observeCallbackItems(changeRecords[i]);
+						}
+					}
 				}
 			}
 		},
@@ -269,7 +329,7 @@ define([
 		 * @protected
 		 */
 		fetch: function (collection) {
-			if (Array.isArray(this.store) === false) {
+			if (!Array.isArray(this.store)) {
 				return collection.fetch();
 			} else {
 				return Promise.resolve(collection);
@@ -282,7 +342,7 @@ define([
 		 * @protected
 		 */
 		fetchRange: function (collection, args) {
-			if (Array.isArray(this.store) === false) {
+			if (!Array.isArray(this.store)) {
 				return collection.fetchRange(args);
 			} else {
 				var res = this.store.slice(args.start, args.end);
@@ -309,8 +369,10 @@ define([
 				this._tracked.tracking.remove();
 				this._tracked = null;
 			}
-			if (this._observeResult != null) {
-				this._observeResult.remove();
+			if (this._observeResults) {
+				for (var i = 0; i < this._observeResults.length; i++) {
+					this._observeResults[i].remove();
+				}
 			}
 		},
 
@@ -445,7 +507,7 @@ define([
 		 * @protected
 		 */
 		getIdentity: function (item) {
-			if (Array.isArray(this.store) === false) {
+			if (!Array.isArray(this.store)) {
 				return this.store.getIdentity(item);
 			} else {
 				return item.id;
