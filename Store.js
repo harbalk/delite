@@ -510,7 +510,7 @@ define([
 			if (!Array.isArray(this.store)) {
 				return this.store.getIdentity(item);
 			} else {
-				return item.id;
+				return item.id ? item.id : this.store.indexOf(item);
 			}
 		}
 	});

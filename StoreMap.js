@@ -205,20 +205,15 @@ define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store"], function (dcl, Pro
 			// properties are copied)
 			// we might need it in other context as well
 			renderItem.__item = item;
-
-			if (!Array.isArray(this.store)) {
-				// special id case
-				var id = store.getIdentity(item);
-				// Warning: we are using private API from dstore/Store here so let's do that conditionally
-				// the purpose is to workaround the fact in some cases the store might miss the ID and we don't
-				// want to bother people about that.
-				if (id == null && store._setIdentity) {
-					store._setIdentity(item, Math.random());
-				}
-				renderItem.id = store.getIdentity(item);
-			} else {
-				renderItem.id = item.id ? item.id : store.indexOf(item);
+			// special id case
+			var id = store.getIdentity(item);
+			// Warning: we are using private API from dstore/Store here so let's do that conditionally
+			// the purpose is to workaround the fact in some cases the store might miss the ID and we don't
+			// want to bother people about that.
+			if (id == null && store._setIdentity) {
+				store._setIdentity(item, Math.random());
 			}
+			renderItem.id = store.getIdentity(item);
 			// general mapping case
 			for (var i = 0; i < mappedKeys.length; i++) {
 				renderItem[mappedKeys[i]] = getvalue(this, item, mappedKeys[i], store);
