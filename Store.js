@@ -130,8 +130,8 @@ define([
 		queryStoreAndInitItems: function (processQueryResult) {
 			if (this.store != null) {
 				var collection;
+				this._untrack();
 				if (!Array.isArray(this.store)) {
-					this._untrack();
 					if (!this.store.filter && this.store instanceof HTMLElement && !this.store.attached) {
 						// this might a be a store custom element, wait for it
 						this.store.addEventListener("customelement-attached", this._attachedlistener = function () {
@@ -152,23 +152,16 @@ define([
 						collection.on("refresh", this._refreshHandler.bind(this));
 					}
 				} else {
+					this.itemHandles = [];
+					this.observeCallbackArray = this._observeCallbackArray.bind(this);
+					this.observeCallbackItems = this._observeCallbackItems.bind(this);
 					for (var i = 0; i < this.store.length; i++) {
-						if (this._isItemObservable(this.store[i])) {
-							this._hasItemObservable = true;
-							this._observeResults =  [];
-							// affect the callback to the observe function if the item is observable
-							this._observeResults[i + 1] = Observable.observe(this.store[i],
-								this.observeCallback.bind(this));
-						}
+						// affect the callback to the observe function if the item is observable
+						this.itemHandles[i] = Observable.observe(this.store[i], this.observeCallbackItems);
 					}
 					collection = processQueryResult.call(this, this.store.filter(this._isQueried, this));
-					if (this._isArrayObservable(this.store)) {
-						if (!this._observeResults) {
-							this._observeResults = [];
-						}
-						// affect the callback to the observe function if the array is observable
-						this._observeResults[0] = ObservableArray.observe(this.store, this.observeCallback.bind(this));
-					}
+					// affect the callback to the observe function if the array is observable
+					this.storeHandle = ObservableArray.observe(this.store, this.observeCallbackArray);
 				}
 				return this.processCollection(collection);
 			} else {
@@ -182,11 +175,11 @@ define([
 		deliver: dcl.superCall(function (sup) {
 			return function () {
 				sup.call();
-				if (this._observeResults) {
-					this._observeResults[0].deliver();
-					if (this._hasItemObservable) {
-						this.observeCallback && Observable.deliverChangeRecords(this.observeCallback);
-					}
+				if (this.storeHandle) {
+					this.storeHandle.deliver();
+				}
+				if (this.itemHandles) {
+					this.observeCallbackItems && Observable.deliverChangeRecords(this.observeCallbackItems);
 				}
 			};
 		}),
@@ -197,35 +190,15 @@ define([
 		discardChanges: dcl.superCall(function (sup) {
 			return function () {
 				sup.call();
-				if (this._observeResults) {
+				if (this.storeHandle && this.itemHandles) {
 					this._beingDiscarded = true;
-					this._observeResults[0].deliver();
-					if (this._hasItemObservable === true) {
-						this.observeCallback && Observable.deliverChangeRecords(this.observeCallback);
-					}
+					this.storeHandle.deliver();
+					this.observeCallbackItems && Observable.deliverChangeRecords(this.observeCallbackItems);
 					this._beingDiscarded = false;
 					return this.store;
 				}
 			};
 		}),
-
-		/**
-		 * Called to verify if an item is observable
-		 * @param item
-		 * @private
-		 */
-		_isItemObservable: function (item) {
-			return (Observable.test(item) || has("object-observe-api"));
-		},
-
-		/**
-		 * Called to verify if the array is observable
-		 * @param item
-		 * @private
-		 */
-		_isArrayObservable: function (item) {
-			return (ObservableArray.test(item) || has("object-observe-api"));
-		},
 
 		/**
 		 * Called to verify if the item respect the query conditions
@@ -242,56 +215,35 @@ define([
 		},
 
 		/**
-		 * Called when a modification is done on the array or its items.
-		 * @param changeRecords - send by the Observe function
-		 */
-		observeCallback: function (changeRecords) {
-			if (!this._beingDiscarded) {
-				for (var i = 0; i < changeRecords.length; i++) {
-					// array modified
-					if (Array.isArray(changeRecords[i].object)) {
-						this.observeCallbackArray(changeRecords[i]);
-						// one item of the array modified
-					} else {
-						var found = false;
-						for (var j = i + 1; j < changeRecords.length; j++) {
-							if (changeRecords[j].object === changeRecords[i].object) {
-								found = true;
-								changeRecords[j].oldValue = changeRecords[i].oldValue;
-							}
-						}
-						if (!found) {
-							this.observeCallbackItems(changeRecords[i]);
-						}
-					}
-				}
-			}
-		},
-
-		/**
 		 * Called when a modification is done on the array.
 		 * @param changeRecords - send by the Observe function
 		 */
-		observeCallbackArray: function (change) {
-			if (change.type === "splice") {
-				var j;
-				for (j = 0; j < change.removed.length; j++) {
-					var evtRemoved = {previousIndex: change.index};
-					this._itemRemoved(evtRemoved);
-				}
-				for (j = 0; j < change.addedCount; j++) {
-					var evtAdded = {
-						index: change.index + j,
-						target: this.store[change.index + j]
-					};
-					if (this.renderItems !== null && this.renderItems !== undefined) {
-						evtAdded.index = evtAdded.index <= this.renderItems.length ?
-							evtAdded.index : this.renderItems.length;
-					}
-					// affect the callback to the observe function if the item is observable
-					Observable.observe(this.store[change.index + j], this.observeCallback.bind(this));
-					if (this._isQueried(evtAdded.target, this.query)) {
-						this._itemAdded(evtAdded);
+		_observeCallbackArray: function (changeRecords) {
+			if (!this._beingDiscarded) {
+				for (var i = 0; i < changeRecords.length; i++) {
+					if (changeRecords[i].type === "splice") {
+						var j;
+						for (j = 0; j < changeRecords[i].removed.length; j++) {
+							this.itemHandles[changeRecords[i].index].remove();
+							var evtRemoved = {previousIndex: changeRecords[i].index};
+							this._itemRemoved(evtRemoved);
+						}
+						for (j = 0; j < changeRecords[i].addedCount; j++) {
+							var evtAdded = {
+								index: changeRecords[i].index + j,
+								target: this.store[changeRecords[i].index + j]
+							};
+							if (this.renderItems !== null && this.renderItems !== undefined) {
+								evtAdded.index = evtAdded.index <= this.renderItems.length ?
+									evtAdded.index : this.renderItems.length;
+							}
+							// affect the callback to the observe function if the item is observable
+							this.itemHandles[changeRecords[i].index + j] =
+								Observable.observe(this.store[changeRecords[i].index + j], this.observeCallbackItems);
+							if (this._isQueried(evtAdded.target, this.query)) {
+								this._itemAdded(evtAdded);
+							}
+						}
 					}
 				}
 			}
@@ -301,14 +253,24 @@ define([
 		 * Called when a modification is done on the items.
 		 * @param changeRecords - send by the Observe function
 		 */
-		observeCallbackItems: function (change) {
-			if (change.type === "add" || change.type === "update" || change.type === "delete") {
-				var evtUpdated = {
-					index: this.store.indexOf(change.object),
-					previousIndex: this.store.indexOf(change.object),
-					target: change.object
-				};
-				this._itemUpdated(evtUpdated);
+		_observeCallbackItems: function (changeRecords) {
+			if (!this._beingDiscarded) {
+				var objects = [];
+				for (var i = 0; i < changeRecords.length; i++) {
+					var object = changeRecords[i].object;
+					if (objects.indexOf(object) < 0) {
+						objects.push(object);
+						if (changeRecords[i].type === "add" || changeRecords[i].type === "update" ||
+							changeRecords[i].type === "delete" || changeRecords[i].type === "splice") {
+							var evtUpdated = {
+								index: this.store.indexOf(object),
+								previousIndex: this.store.indexOf(object),
+								target: object
+							};
+							this._itemUpdated(evtUpdated);
+						}
+					}
+				}
 			}
 		},
 
@@ -369,9 +331,12 @@ define([
 				this._tracked.tracking.remove();
 				this._tracked = null;
 			}
-			if (this._observeResults) {
-				for (var i = 0; i < this._observeResults.length; i++) {
-					this._observeResults[i].remove();
+			if (this.storeHandle) {
+				this.storeHandle.remove();
+			}
+			if (this.itemHandles) {
+				for (var i = 0; i < this.itemHandles.length; i++) {
+					this.itemHandles[i].remove();
 				}
 			}
 		},
@@ -510,7 +475,7 @@ define([
 			if (!Array.isArray(this.store)) {
 				return this.store.getIdentity(item);
 			} else {
-				return item.id;
+				return (item.id !== undefined) ? item.id : this.store.indexOf(item);
 			}
 		}
 	});
