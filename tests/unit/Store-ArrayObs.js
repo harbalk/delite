@@ -149,7 +149,7 @@ define([
 			var d = this.async(1500);
 			var store = new C();
 			store.fetch = function (collection) {
-				return store.fetchRange(collection, {start: 0, end: 1});
+				return collection.fetchRange({start: 0, end: 1});
 			};
 			store.on("query-success", d.callback(function () {
 				assert(store.renderItems instanceof Array);

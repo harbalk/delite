@@ -5,8 +5,9 @@ define([
 	"decor/Invalidating",
 	"requirejs-dplugins/Promise!",
 	"decor/ObservableArray",
-	"decor/Observable"
-], function (dcl, has, Invalidating, Promise, ObservableArray, Observable) {
+	"decor/Observable",
+	"./WrapObservableArray"
+], function (dcl, has, Invalidating, Promise, ObservableArray, Observable, WrapObservableArray) {
 
 	/**
 	 * Dispatched once the query has been executed and the `renderItems` array
@@ -39,6 +40,8 @@ define([
 		 * @default null
 		 */
 		store: null,
+
+		wrap_store:null,
 
 		/**
 		 * A query filter to apply to the store.
@@ -142,6 +145,7 @@ define([
 							this.store.removeEventListener("customelement-attached", this._attachedlistener);
 						}
 					}
+					this.wrap_store = this.store;
 					collection = processQueryResult.call(this, this.store.filter(this.query));
 					if (collection.track) {
 						// user asked us to observe the store
@@ -155,13 +159,18 @@ define([
 					for (var i = 0; i < this.store.length; i++) {
 						if (this._isItemObservable(this.store[i])) {
 							this._hasItemObservable = true;
-							this._observeResults =  [];
+							if (!this._observeResults) {
+								this._observeResults = [];
+							}
 							// affect the callback to the observe function if the item is observable
 							this._observeResults[i + 1] = Observable.observe(this.store[i],
 								this.observeCallback.bind(this));
 						}
 					}
-					collection = processQueryResult.call(this, this.store.filter(this._isQueried, this));
+					this.wrap_store = new WrapObservableArray();
+					this.wrap_store.store = this;
+					this.wrap_store.data = processQueryResult.call(this, this.store.filter(this._isQueried, this));
+					collection = this.wrap_store;
 					if (this._isArrayObservable(this.store)) {
 						if (!this._observeResults) {
 							this._observeResults = [];
@@ -329,11 +338,7 @@ define([
 		 * @protected
 		 */
 		fetch: function (collection) {
-			if (!Array.isArray(this.store)) {
-				return collection.fetch();
-			} else {
-				return Promise.resolve(collection);
-			}
+			return collection.fetch();
 		},
 
 		/**
@@ -341,23 +346,23 @@ define([
 		 * @param {dstore/Collection} collection - Items to be displayed.
 		 * @protected
 		 */
-		fetchRange: function (collection, args) {
-			if (!Array.isArray(this.store)) {
-				return collection.fetchRange(args);
-			} else {
-				var res = this.store.slice(args.start, args.end);
-				if (res.length < (args.end - args.start)) {
-					var promise;
-					var evt = {start: args.start, end: args.end, setPromise: function (pro) {
-						promise = pro;
-					}};
-					this.emit("new-query-asked", evt);
-					return promise;
-				} else {
-					return Promise.resolve(res);
-				}
-			}
-		},
+		//fetchRange: function (collection, args) {
+		//	if (!Array.isArray(this.store)) {
+		//		return collection.fetchRange(args);
+		//	} else {
+		//		var res = this.store.slice(args.start, args.end);
+		//		if (res.length < (args.end - args.start)) {
+		//			var promise;
+		//			var evt = {start: args.start, end: args.end, setPromise: function (pro) {
+		//				promise = pro;
+		//			}};
+		//			this.emit("new-query-asked", evt);
+		//			return promise;
+		//		} else {
+		//			return Promise.resolve(res);
+		//		}
+		//	}
+		//},
 
 		_queryError: function (error) {
 			console.log(error);
@@ -507,11 +512,7 @@ define([
 		 * @protected
 		 */
 		getIdentity: function (item) {
-			if (!Array.isArray(this.store)) {
-				return this.store.getIdentity(item);
-			} else {
-				return item.id ? item.id : this.store.indexOf(item);
-			}
+			return this.wrap_store.getIdentity(item);
 		}
 	});
 });
