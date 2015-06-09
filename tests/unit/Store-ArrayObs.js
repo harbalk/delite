@@ -1,8 +1,8 @@
 define([
 	"intern!object",
 	"intern/chai!assert", "dcl/dcl", "dojo/_base/declare",
-	"delite/register", "delite/Widget", "delite/Store", "decor/ObservableArray"
-], function (registerSuite, assert, dcl, declare, register, Widget, Store, ObservableArray) {
+	"delite/register", "delite/Widget", "delite/Store", "decor/Observable", "decor/ObservableArray"
+], function (registerSuite, assert, dcl, declare, register, Widget, Store, Observable, ObservableArray) {
 	var C = register("test-store-arrayobs", [HTMLElement, Widget, Store]);
 	registerSuite({
 		name: "Store-ArrayObs",
@@ -260,6 +260,42 @@ define([
 			}));
 			store.store = new ObservableArray({id: "foo", name: "Foo"},
 				{id: "bar", name: "Bar"});
+			return d;
+		},
+
+		"Add, Remove observe results": function () {
+			var d = this.async(2000);
+			var store = new C();
+			var obj = new Observable({id: "foo", name: "Foo"});
+			var obj2 = new Observable({id: "bar", name: "Bar"});
+			store.on("query-success", d.callback(function () {
+				assert(store.renderItems instanceof Array);
+				assert.strictEqual(store.renderItems.length, 2);
+				assert.deepEqual(store.renderItems[0], obj);
+				assert.deepEqual(store.renderItems[1], obj2);
+				assert.strictEqual(store._itemHandles.length, 2);
+				obj.set("id", "foo1");
+				store.deliver();
+				assert.strictEqual(store.renderItems.length, 2);
+				assert.deepEqual(store.renderItems[0], { id: "foo1", name: "Foo" });
+				assert.deepEqual(store.renderItems[1], { id: "bar", name: "Bar" });
+				assert.strictEqual(store._itemHandles.length, 2);
+				store.store.splice(0, 1);
+				store.deliver();
+				assert.strictEqual(store.renderItems.length, 1);
+				assert.deepEqual(store.renderItems[0], { id: "bar", name: "Bar" });
+				assert.strictEqual(store._itemHandles.length, 1);
+				store.store.push({ id: "fb", name: "FB" });
+				store.deliver();
+				assert.strictEqual(store.renderItems.length, 2);
+				assert.deepEqual(store.renderItems[0], { id: "bar", name: "Bar" });
+				assert.deepEqual(store.renderItems[1], { id: "fb", name: "FB" });
+				assert.strictEqual(store._itemHandles.length, 2);
+
+				assert.deepEqual(store._itemHandles[0].remove(), { id: "bar", name: "Bar" });
+				assert.deepEqual(store._itemHandles[1].remove(), { id: "fb", name: "FB" });
+			}));
+			store.store = new ObservableArray(obj, obj2);
 			return d;
 		},
 

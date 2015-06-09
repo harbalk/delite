@@ -152,16 +152,16 @@ define([
 						collection.on("refresh", this._refreshHandler.bind(this));
 					}
 				} else {
-					this.itemHandles = [];
-					this.observeCallbackArray = this._observeCallbackArray.bind(this);
-					this.observeCallbackItems = this._observeCallbackItems.bind(this);
+					this._itemHandles = [];
+					this._observeCallbackArray = this.__observeCallbackArray.bind(this);
+					this._observeCallbackItems = this.__observeCallbackItems.bind(this);
 					for (var i = 0; i < this.store.length; i++) {
 						// affect the callback to the observe function if the item is observable
-						this.itemHandles[i] = Observable.observe(this.store[i], this.observeCallbackItems);
+						this._itemHandles[i] = Observable.observe(this.store[i], this._observeCallbackItems);
 					}
 					collection = processQueryResult.call(this, this.store.filter(this._isQueried, this));
 					// affect the callback to the observe function if the array is observable
-					this.storeHandle = ObservableArray.observe(this.store, this.observeCallbackArray);
+					this._storeHandle = ObservableArray.observe(this.store, this._observeCallbackArray);
 				}
 				return this.processCollection(collection);
 			} else {
@@ -175,11 +175,11 @@ define([
 		deliver: dcl.superCall(function (sup) {
 			return function () {
 				sup.call();
-				if (this.storeHandle) {
-					this.storeHandle.deliver();
+				if (this._storeHandle) {
+					this._storeHandle.deliver();
 				}
-				if (this.itemHandles) {
-					this.observeCallbackItems && Observable.deliverChangeRecords(this.observeCallbackItems);
+				if (this._itemHandles) {
+					this._observeCallbackItems && Observable.deliverChangeRecords(this._observeCallbackItems);
 				}
 			};
 		}),
@@ -190,10 +190,10 @@ define([
 		discardChanges: dcl.superCall(function (sup) {
 			return function () {
 				sup.call();
-				if (this.storeHandle && this.itemHandles) {
+				if (this._storeHandle && this._itemHandles) {
 					this._beingDiscarded = true;
-					this.storeHandle.deliver();
-					this.observeCallbackItems && Observable.deliverChangeRecords(this.observeCallbackItems);
+					this._storeHandle.deliver();
+					this._observeCallbackItems && Observable.deliverChangeRecords(this._observeCallbackItems);
 					this._beingDiscarded = false;
 					return this.store;
 				}
@@ -218,13 +218,14 @@ define([
 		 * Called when a modification is done on the array.
 		 * @param changeRecords - send by the Observe function
 		 */
-		_observeCallbackArray: function (changeRecords) {
+		__observeCallbackArray: function (changeRecords) {
 			if (!this._beingDiscarded) {
 				for (var i = 0; i < changeRecords.length; i++) {
 					if (changeRecords[i].type === "splice") {
 						var j;
 						for (j = 0; j < changeRecords[i].removed.length; j++) {
-							this.itemHandles[changeRecords[i].index].remove();
+							this._itemHandles[changeRecords[i].index].remove();
+							this._itemHandles.splice(changeRecords[i].index, 1)
 							var evtRemoved = {previousIndex: changeRecords[i].index};
 							this._itemRemoved(evtRemoved);
 						}
@@ -238,8 +239,8 @@ define([
 									evtAdded.index : this.renderItems.length;
 							}
 							// affect the callback to the observe function if the item is observable
-							this.itemHandles[changeRecords[i].index + j] =
-								Observable.observe(this.store[changeRecords[i].index + j], this.observeCallbackItems);
+							this._itemHandles.splice(changeRecords[i].index + j, 0,
+								Observable.observe(this.store[changeRecords[i].index + j], this._observeCallbackItems));
 							if (this._isQueried(evtAdded.target, this.query)) {
 								this._itemAdded(evtAdded);
 							}
@@ -253,7 +254,7 @@ define([
 		 * Called when a modification is done on the items.
 		 * @param changeRecords - send by the Observe function
 		 */
-		_observeCallbackItems: function (changeRecords) {
+		__observeCallbackItems: function (changeRecords) {
 			if (!this._beingDiscarded) {
 				var objects = [];
 				for (var i = 0; i < changeRecords.length; i++) {
@@ -331,12 +332,12 @@ define([
 				this._tracked.tracking.remove();
 				this._tracked = null;
 			}
-			if (this.storeHandle) {
-				this.storeHandle.remove();
+			if (this._storeHandle) {
+				this._storeHandle.remove();
 			}
-			if (this.itemHandles) {
-				for (var i = 0; i < this.itemHandles.length; i++) {
-					this.itemHandles[i].remove();
+			if (this._itemHandles) {
+				for (var i = 0; i < this._itemHandles.length; i++) {
+					this._itemHandles[i].remove();
 				}
 			}
 		},
