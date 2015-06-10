@@ -160,6 +160,31 @@ define([
 						this._itemHandles[i] = Observable.observe(this.store[i], this._observeCallbackItems);
 					}
 					collection = processQueryResult.call(this, this.store.filter(this._isQueried, this));
+					this.on("add", function (evt) {
+						var i = evt.index - 1;
+						while (!this._isQueried(this.store[i])) {
+							i--;
+						}
+						var idx = collection.indexOf(this.store[i]);
+						collection.splice(idx + 1, 0, evt.obj);
+						this._itemAdded({index: idx + 1, target: evt.obj});
+					});
+					this.on("delete", function (evt) {
+						var idx = collection.indexOf(evt.obj);
+						collection.splice(idx, 1);
+						this._itemRemoved({previousIndex: idx});
+					});
+					this.on("update", function (evt) {
+						var idx = collection.indexOf(evt.obj);
+						if (this._isQueried(evt.obj) && idx >= 0) {
+							this._itemUpdated({index: idx, previousIndex: idx, target: evt.obj});
+						} else if (this._isQueried(evt.obj) && idx < 0) {
+							this.emit("add", evt);
+						} else if (!this._isQueried(evt.obj) && idx >= 0) {
+							collection.splice(idx, 1);
+							this._itemRemoved({previousIndex: idx});
+						}
+					});
 					// affect the callback to the observe function if the array is observable
 					this._storeHandle = ObservableArray.observe(this.store, this._observeCallbackArray);
 				}
@@ -225,14 +250,17 @@ define([
 						var j;
 						for (j = 0; j < changeRecords[i].removed.length; j++) {
 							this._itemHandles[changeRecords[i].index].remove();
-							this._itemHandles.splice(changeRecords[i].index, 1)
-							var evtRemoved = {previousIndex: changeRecords[i].index};
-							this._itemRemoved(evtRemoved);
+							this._itemHandles.splice(changeRecords[i].index, 1);
+							var evtRemoved = {previousIndex: changeRecords[i].index,
+								obj: changeRecords[i].removed[j]};
+							if (this._isQueried(evtRemoved.obj, this.query)) {
+								this.emit("delete", evtRemoved);
+							}
 						}
 						for (j = 0; j < changeRecords[i].addedCount; j++) {
 							var evtAdded = {
 								index: changeRecords[i].index + j,
-								target: this.store[changeRecords[i].index + j]
+								obj: this.store[changeRecords[i].index + j]
 							};
 							if (this.renderItems !== null && this.renderItems !== undefined) {
 								evtAdded.index = evtAdded.index <= this.renderItems.length ?
@@ -241,8 +269,8 @@ define([
 							// affect the callback to the observe function if the item is observable
 							this._itemHandles.splice(changeRecords[i].index + j, 0,
 								Observable.observe(this.store[changeRecords[i].index + j], this._observeCallbackItems));
-							if (this._isQueried(evtAdded.target, this.query)) {
-								this._itemAdded(evtAdded);
+							if (this._isQueried(evtAdded.obj, this.query)) {
+								this.emit("add", evtAdded);
 							}
 						}
 					}
@@ -266,9 +294,11 @@ define([
 							var evtUpdated = {
 								index: this.store.indexOf(object),
 								previousIndex: this.store.indexOf(object),
-								target: object
+								obj: object,
+								oldValue: changeRecords[i].oldValue,
+								name: changeRecords[i].name
 							};
-							this._itemUpdated(evtUpdated);
+							this.emit("update", evtUpdated);
 						}
 					}
 				}
@@ -308,7 +338,7 @@ define([
 			if (!Array.isArray(this.store)) {
 				return collection.fetchRange(args);
 			} else {
-				var res = this.store.slice(args.start, args.end);
+				var res = collection.slice(args.start, args.end);
 				if (res.length < (args.end - args.start)) {
 					var promise;
 					var evt = {start: args.start, end: args.end, setPromise: function (pro) {
