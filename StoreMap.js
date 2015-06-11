@@ -151,42 +151,16 @@ define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store"], function (dcl, Pro
 		 * @returns {Promise}		
 		 */
 		renderItemToItem: function (renderItem) {
-			var tmp = {}, store = this.store;
+			var tmp = {}, store = this.wrapStore;
 			// special id case
-			if (!Array.isArray(store)) {
-				tmp[store.idProperty] = renderItem.id;
-			} else {
-				tmp.id = renderItem.id;
-			}
+			store._setIdentity(tmp, renderItem.id);
 			for (var key in renderItem) {
 				setvalue(this, tmp, key, store, renderItem[key]);
 			}
-			return this._getItemById(tmp.id, renderItem, store).then(function (item) {
+			return store.get(tmp.id).then(function (item) {
 				dcl.mix(item, tmp);
 				return item;
 			});
-		},
-
-		/**
-		 * Gets an item of the store by its id
-		 * @param id
-		 * @param renderItem
-		 * @param store
-		 * @returns {Promise}
-		 * @private
-		 */
-		_getItemById: function (id, renderItem, store) {
-			if (!Array.isArray(store)) {
-				return store.get(renderItem[store.idProperty]);
-			} else {
-				var res = store[0];
-				var	i = 1;
-				while (res.id !== id) {
-					res = store[i];
-					i++;
-				}
-				return Promise.resolve(res);
-			}
 		},
 
 		/**
@@ -198,7 +172,7 @@ define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store"], function (dcl, Pro
 		itemToRenderItem: function (item) {
 			var renderItem = {};
 			var mappedKeys = this._mappedKeys;
-			var store = this.store;
+			var store = this.wrapStore;
 
 			// if we allow remap we need to store the initial item
 			// we need this to be enumerable for dealing with update case (where only enumerable
