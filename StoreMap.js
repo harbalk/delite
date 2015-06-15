@@ -151,7 +151,7 @@ define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store"], function (dcl, Pro
 		 * @returns {Promise}		
 		 */
 		renderItemToItem: function (renderItem) {
-			var tmp = {}, store = this.wrapStore;
+			var tmp = {}, store = this._storeAdapter;
 			// special id case
 			store._setIdentity(tmp, renderItem.id);
 			for (var key in renderItem) {
@@ -172,7 +172,7 @@ define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store"], function (dcl, Pro
 		itemToRenderItem: function (item) {
 			var renderItem = {};
 			var mappedKeys = this._mappedKeys;
-			var store = this.wrapStore;
+			var store = this._storeAdapter;
 
 			// if we allow remap we need to store the initial item
 			// we need this to be enumerable for dealing with update case (where only enumerable
