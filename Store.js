@@ -6,8 +6,9 @@ define([
 	"requirejs-dplugins/Promise!",
 	"decor/ObservableArray",
 	"decor/Observable",
-	"./WrapObservableArray"
-], function (dcl, has, Invalidating, Promise, ObservableArray, Observable, WrapObservableArray) {
+	"./ArrayToStoreAdapter",
+	"./DstoreToStoreAdapter"
+], function (dcl, has, Invalidating, Promise, ObservableArray, Observable, ArrayToStoreAdapter, DstoreToStoreAdapter) {
 
 	/**
 	 * Dispatched once the query has been executed and the `renderItems` array
@@ -112,10 +113,9 @@ define([
 		computeProperties: function (props) {
 			if ("store" in props || "query" in props) {
 				if (!Array.isArray(this.store)) {
-					this.wrapStore = this.store;
+					this._storeAdapter = new DstoreToStoreAdapter({store: this});
 				} else {
-					this.wrapStore = new WrapObservableArray();
-					this.wrapStore.store = this;
+					this._storeAdapter = new ArrayToStoreAdapter({store: this});
 				}
 				this.queryStoreAndInitItems(this.processQueryResult);
 			}
@@ -130,77 +130,12 @@ define([
 		 * if needed.
 		 * @param processQueryResult - A function that processes the collection returned by the store query
 		 * and returns a new collection (to sort it, etc...)., applied before tracking.
-		 * @returns {Promise} If store to be processed is not null a promise that will be resolved when the loading 
+		 * @returns {Promise} If store to be processed is not null a promise that will be resolved when the loading
 		 * process will be finished.
 		 * @protected
 		 */
 		queryStoreAndInitItems: function (processQueryResult) {
-			if (this.store != null) {
-				var collection;
-				this._untrack();
-				if (!Array.isArray(this.store)) {
-					if (!this.store.filter && this.store instanceof HTMLElement && !this.store.attached) {
-						// this might a be a store custom element, wait for it
-						this.store.addEventListener("customelement-attached", this._attachedlistener = function () {
-							this.queryStoreAndInitItems(this.processQueryResult);
-						}.bind(this));
-					} else {
-						if (this._attachedlistener) {
-							this.store.removeEventListener("customelement-attached", this._attachedlistener);
-						}
-					}
-					collection = processQueryResult.call(this, this.store.filter(this.query));
-					if (collection.track) {
-						// user asked us to observe the store
-						collection = this._tracked = collection.track();
-						collection.on("add", this._itemAdded.bind(this));
-						collection.on("update", this._itemUpdated.bind(this));
-						collection.on("delete", this._itemRemoved.bind(this));
-						collection.on("refresh", this._refreshHandler.bind(this));
-					}
-				} else {
-					this._itemHandles = [];
-					this._observeCallbackArray = this.__observeCallbackArray.bind(this);
-					this._observeCallbackItems = this.__observeCallbackItems.bind(this);
-					for (var i = 0; i < this.store.length; i++) {
-						// affect the callback to the observe function if the item is observable
-						this._itemHandles[i] = Observable.observe(this.store[i], this._observeCallbackItems);
-					}
-					// affect the callback to the observe function if the array is observable
-					this._storeHandle = ObservableArray.observe(this.store, this._observeCallbackArray);
-
-					this.wrapStore.data = processQueryResult.call(this, this.store.filter(this._isQueried, this));
-					collection = this.wrapStore;
-					collection.on("add", function (evt) {
-						var i = evt.index - 1;
-						while (!this._isQueried(this.store[i])) {
-							i--;
-						}
-						var idx = collection.data.indexOf(this.store[i]);
-						collection.data.splice(idx + 1, 0, evt.obj);
-						this._itemAdded({index: idx + 1, target: evt.obj});
-					}.bind(this));
-					collection.on("delete", function (evt) {
-						var idx = collection.data.indexOf(evt.obj);
-						collection.data.splice(idx, 1);
-						this._itemRemoved({previousIndex: idx});
-					}.bind(this));
-					collection.on("update", function (evt) {
-						var idx = collection.data.indexOf(evt.obj);
-						if (this._isQueried(evt.obj) && idx >= 0) {
-							this._itemUpdated({index: idx, previousIndex: idx, target: evt.obj});
-						} else if (this._isQueried(evt.obj) && idx < 0) {
-							this.emit("add", evt);
-						} else if (!this._isQueried(evt.obj) && idx >= 0) {
-							collection.data.splice(idx, 1);
-							this._itemRemoved({previousIndex: idx});
-						}
-					}.bind(this));
-				}
-				return this.processCollection(collection);
-			} else {
-				this.initItems([]);
-			}
+			return this._storeAdapter.queryStoreAndInitItems(processQueryResult);
 		},
 
 		/**
@@ -209,11 +144,8 @@ define([
 		deliver: dcl.superCall(function (sup) {
 			return function () {
 				sup.call();
-				if (this._storeHandle) {
-					this._storeHandle.deliver();
-				}
-				if (this._itemHandles) {
-					this._observeCallbackItems && Observable.deliverChangeRecords(this._observeCallbackItems);
+				if (this._storeAdapter && typeof(this._storeAdapter.deliver) === "function") {
+					this._storeAdapter.deliver();
 				}
 			};
 		}),
@@ -224,95 +156,11 @@ define([
 		discardChanges: dcl.superCall(function (sup) {
 			return function () {
 				sup.call();
-				if (this._storeHandle && this._itemHandles) {
-					this._beingDiscarded = true;
-					this._storeHandle.deliver();
-					this._observeCallbackItems && Observable.deliverChangeRecords(this._observeCallbackItems);
-					this._beingDiscarded = false;
-					return this.store;
+				if (this._storeAdapter && typeof(this._storeAdapter.discardChanges) === "function") {
+					this._storeAdapter.discardChanges();
 				}
 			};
 		}),
-
-		/**
-		 * Called to verify if the item respect the query conditions
-		 * @param item
-		 * @private
-		 */
-		_isQueried: function (item) {
-			for (var prop in this.query) {
-				if (item[prop] !== this.query[prop]) {
-					return false;
-				}
-			}
-			return true;
-		},
-
-		/**
-		 * Called when a modification is done on the array.
-		 * @param changeRecords - send by the Observe function
-		 */
-		__observeCallbackArray: function (changeRecords) {
-			if (!this._beingDiscarded) {
-				for (var i = 0; i < changeRecords.length; i++) {
-					if (changeRecords[i].type === "splice") {
-						var j;
-						for (j = 0; j < changeRecords[i].removed.length; j++) {
-							this._itemHandles[changeRecords[i].index].remove();
-							this._itemHandles.splice(changeRecords[i].index, 1);
-							var evtRemoved = {previousIndex: changeRecords[i].index,
-								obj: changeRecords[i].removed[j]};
-							if (this._isQueried(evtRemoved.obj, this.query)) {
-								this.wrapStore.emit("delete", evtRemoved);
-							}
-						}
-						for (j = 0; j < changeRecords[i].addedCount; j++) {
-							var evtAdded = {
-								index: changeRecords[i].index + j,
-								obj: this.store[changeRecords[i].index + j]
-							};
-							if (this.renderItems !== null && this.renderItems !== undefined) {
-								evtAdded.index = evtAdded.index <= this.renderItems.length ?
-									evtAdded.index : this.renderItems.length;
-							}
-							// affect the callback to the observe function if the item is observable
-							this._itemHandles.splice(changeRecords[i].index + j, 0,
-								Observable.observe(this.store[changeRecords[i].index + j], this._observeCallbackItems));
-							if (this._isQueried(evtAdded.obj, this.query)) {
-								this.wrapStore.emit("add", evtAdded);
-							}
-						}
-					}
-				}
-			}
-		},
-
-		/**
-		 * Called when a modification is done on the items.
-		 * @param changeRecords - send by the Observe function
-		 */
-		__observeCallbackItems: function (changeRecords) {
-			if (!this._beingDiscarded) {
-				var objects = [];
-				for (var i = 0; i < changeRecords.length; i++) {
-					var object = changeRecords[i].object;
-					if (objects.indexOf(object) < 0) {
-						objects.push(object);
-						if (changeRecords[i].type === "add" || changeRecords[i].type === "update" ||
-							changeRecords[i].type === "delete" || changeRecords[i].type === "splice") {
-							var evtUpdated = {
-								index: this.store.indexOf(object),
-								previousIndex: this.store.indexOf(object),
-								obj: object,
-								oldValue: changeRecords[i].oldValue,
-								name: changeRecords[i].name
-							};
-							this.wrapStore.emit("update", evtUpdated);
-						}
-					}
-				}
-			}
-		},
 
 		/**
 		 * Called to process the items returned after querying the store.
@@ -340,18 +188,7 @@ define([
 		},
 
 		_untrack: function () {
-			if (this._tracked) {
-				this._tracked.tracking.remove();
-				this._tracked = null;
-			}
-			if (this._storeHandle) {
-				this._storeHandle.remove();
-			}
-			if (this._itemHandles) {
-				for (var i = 0; i < this._itemHandles.length; i++) {
-					this._itemHandles[i].remove();
-				}
-			}
+			this._storeAdapter._untrack();
 		},
 
 		detachedCallback: function () {
@@ -485,7 +322,7 @@ define([
 		 * @protected
 		 */
 		getIdentity: function (item) {
-			return this.wrapStore.getIdentity(item);
+			return this._storeAdapter.getIdentity(item);
 		}
 	});
 });
