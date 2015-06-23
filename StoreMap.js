@@ -1,5 +1,6 @@
 /** @module delite/StoreMap */
-define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store"], function (dcl, Promise, Store) {
+define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store", "decor/ObservableArray"],
+	function (dcl, Promise, Store, ObservableArray) {
 
 	var getvalue = function (map, item, key, store) {
 		if (map[key + "Func"]) {
@@ -135,6 +136,16 @@ define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store"], function (dcl, Pro
 				}
 			}
 
+			if (this.store === null && this.textContent !== "") {
+				var data = JSON.parse("[" + this.textContent + "]");
+				for (var j = 0; j < data.length; j++) {
+					if (!data[j].id) {
+						data[j].id = Math.random();
+					}
+				}
+				this.store = ObservableArray.apply(undefined, data);
+			}
+
 			this._mappedKeys = mappedKeys;
 			this.deliver();
 			
@@ -142,6 +153,7 @@ define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store"], function (dcl, Pro
 				this.queryStoreAndInitItems(this._pendingQuery, true);
 				this._pendingQuery = null;
 			}
+
 		},
 
 		/**

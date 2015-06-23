@@ -169,3 +169,40 @@ for example:
 ```
 
 For simplicity, this example is not mapping rendering item changes back to the data store.
+
+## Defining store via markup
+
+The store can be defined via markup with a dstore/Memory trackable or an observable array.
+
+For the dstore/Memory :
+
+```html
+<d-store id="myStore">
+	<!-- Add the following items to the store -->
+	{ "label": "France", "sales": 500, "profit": 50, "region": "EU" },
+	{ "label": "Germany", "sales": 450, "profit": 48, "region": "EU" },
+	{ "label": "UK", "sales": 700, "profit": 60, "region": "EU" },
+	{ "label": "USA", "sales": 2000, "profit": 250, "region": "America" },
+	{ "label": "Canada", "sales": 600, "profit": 30, "region": "America" },
+	{ "label": "Brazil", "sales": 450, "profit": 30, "region": "America" },
+	{ "label": "China", "sales": 500, "profit": 40, "region": "Asia" },
+	{ "label": "Japan", "sales": 900, "profit": 100, "region": "Asia" }
+</d-store>
+<my-widget ... store="myStore"></my-widget>
+```
+
+And for the observable array when putting the data directly in the innerText of the widget :
+
+```html
+<my-widget ...>
+	<!-- Add the following items to the store -->
+    	{ "label": "France", "sales": 500, "profit": 50, "region": "EU" },
+    	{ "label": "Germany", "sales": 450, "profit": 48, "region": "EU" },
+    	{ "label": "UK", "sales": 700, "profit": 60, "region": "EU" },
+    	{ "label": "USA", "sales": 2000, "profit": 250, "region": "America" },
+    	{ "label": "Canada", "sales": 600, "profit": 30, "region": "America" },
+    	{ "label": "Brazil", "sales": 450, "profit": 30, "region": "America" },
+    	{ "label": "China", "sales": 500, "profit": 40, "region": "Asia" },
+    	{ "label": "Japan", "sales": 900, "profit": 100, "region": "Asia" }
+</my-widget>
+```
