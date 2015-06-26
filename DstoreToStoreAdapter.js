@@ -18,58 +18,31 @@ define([
 		},
 
 		/**
-		 * The store that created this WrapObservable object.
-		 * @member {delite/Store}
+		 * The dstore that the adapter represents
+		 * @member {dstore/Store}
 		 * @default null
 		 */
-		store: null,
+		source: null,
 
 		/**
-		 * Queries the store, creates the render items and calls initItems() when ready. If an error occurs
-		 * a 'query-error' event will be fired.
-		 *
-		 * This method is not supposed to be called by application developer.
-		 * It will be called automatically when modifying the store related properties or by the subclass
-		 * if needed.
-		 * @param processQueryResult - A function that processes the collection returned by the store query
-		 * and returns a new collection (to sort it, etc...)., applied before tracking.
-		 * @returns {Promise} If store to be processed is not null a promise that will be resolved when the loading
-		 * process will be finished.
-		 * @protected
+		 * A query filter to apply to the store.
+		 * @member {Object}
+		 * @default {}
 		 */
-		queryStoreAndInitItems: function (processQueryResult) {
-			this._untrack();
-			var dstore = this.store.store;
-			if (dstore != null) {
-				if (!dstore.filter && dstore instanceof HTMLElement && !dstore.attached) {
-					// this might a be a store custom element, wait for it
-					dstore.addEventListener("customelement-attached", this.store._attachedlistener = function () {
-						this.queryStoreAndInitItems(this.store.processQueryResult);
-					}.bind(this));
-				} else {
-					if (this.store._attachedlistener) {
-						dstore.removeEventListener("customelement-attached", this.store._attachedlistener);
-					}
-				}
-				var collection = processQueryResult.call(this.store, dstore.filter(this.store.query));
-				if (collection.track) {
-					// user asked us to observe the store
-					collection = this.store._tracked = collection.track();
-					collection.on("add", this.store._itemAdded.bind(this.store));
-					collection.on("update", this.store._itemUpdated.bind(this.store));
-					collection.on("delete", this.store._itemRemoved.bind(this.store));
-					collection.on("refresh", this.store._refreshHandler.bind(this.store));
-				}
-				return this.store.processCollection(collection);
-			} else {
-				this.store.initItems([]);
-			}
+		query: {},
+
+		_getCollection: function (processQueryResult) {
+			return processQueryResult.call(this, this.source.filter(this.query));
 		},
 
+		/**
+		 * Function to remove the trackability of the dstore
+		 * @private
+		 */
 		_untrack: function () {
-			if (this.store._tracked) {
-				this.store._tracked.tracking.remove();
-				this.store._tracked = null;
+			if (this._tracked) {
+				this._tracked.tracking.remove();
+				this._tracked = null;
 			}
 		},
 
@@ -77,14 +50,14 @@ define([
 		 * Set the identity of an object
 		 */
 		_setIdentity: function (item, id) {
-			this.store.store._setIdentity(item, id);
+			this.source._setIdentity(item, id);
 		},
 
 		/**
 		 * Retrieves an object in the data by its identity
 		 */
 		get: function (id) {
-			return this.store.store.get(id);
+			return this.source.get(id);
 		},
 
 		/**
@@ -94,7 +67,32 @@ define([
 		 * @protected
 		 */
 		getIdentity: function (item) {
-			return this.store.store.getIdentity(item);
+			return this.source.getIdentity(item);
 		}
 	});
+/*====
+	 _getCollection: function (processQueryResult) {
+		 // summary:
+		 //		Filter the store and return the result
+		 // processQueryResult: Function
+		 //		Function apply on the dstore.
+		 // returns: {dstore}
+	 _untrack: function () {
+		 // summary:
+		 //		Function to remove the trackability of the dstore
+	 _setIdentity: function (item, id) {
+		 // summary:
+		 //		Function used to set the id of an item - (used in delite/StoreMap)
+		 // item: Object - the item to set id
+		 // id: value of the id to set
+	 get: function (id) {
+		 // summary:
+		 //		Retrieves an object in the data by its identity (used occasionally by StoreMap)
+		 // id: the id of the object to get
+	 getIdentity: function (item) {
+		 // summary:
+		 //		Get the identity of an object
+		 // item: Object - the item to get the identity
+	 }
+====*/
 });

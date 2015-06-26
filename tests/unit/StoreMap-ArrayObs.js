@@ -33,30 +33,30 @@ define([
 				assert(store.renderItems instanceof Array);
 				assert.strictEqual(store.renderItems.length, 2);
 				assert.deepEqual(store.renderItems[0], { id: "foo", foo: "Foo", bar: "1",
-					__item: store.store[0] });
+					__item: store.source[0] });
 				assert.deepEqual(store.renderItems[1], { id: "bar", foo: "Bar", bar: "2",
-					__item: store.store[1] });
+					__item: store.source[1] });
 
-				store.store.push({ id: "fb", name: "FB", firstname: "4" });
+				store.source.push({ id: "fb", name: "FB", firstname: "4" });
 				store.deliver();
 				assert.strictEqual(store.renderItems.length, 3);
 				assert.deepEqual(store.renderItems[0], { id: "foo", foo: "Foo", bar: "1",
-					__item: store.store[0] });
+					__item: store.source[0] });
 				assert.deepEqual(store.renderItems[1], { id: "bar", foo: "Bar", bar: "2",
-					__item: store.store[1] });
+					__item: store.source[1] });
 				assert.deepEqual(store.renderItems[2], { id: "fb", foo: "FB", bar: "4",
-					__item: store.store[2] });
+					__item: store.source[2] });
 
-				store.store.splice(1, 1);
+				store.source.splice(1, 1);
 				store.deliver();
 				assert.strictEqual(store.renderItems.length, 2);
 				assert.deepEqual(store.renderItems[0], { id: "foo", foo: "Foo", bar: "1",
-					__item: store.store[0] });
+					__item: store.source[0] });
 				assert.deepEqual(store.renderItems[1], { id: "fb", foo: "FB", bar: "4",
-					__item: store.store[1] });
+					__item: store.source[1] });
 			}));
 			store.placeAt(container);
-			store.store = new ObservableArray({ id: "foo", name: "Foo", firstname: "1" },
+			store.source = new ObservableArray({ id: "foo", name: "Foo", firstname: "1" },
 				{ id: "bar", name: "Bar", firstname: "2" });
 			return d;
 		},
@@ -71,7 +71,7 @@ define([
 			});
 			var d = this.async(3000);
 			var store = new C();
-			store.store = new ObservableArray({ id: "foo", name: "Foo", firstname: "1" },
+			store.source = new ObservableArray({ id: "foo", name: "Foo", firstname: "1" },
 				{ id: "bar", name: "Bar", firstname: "2" });
 
 			setTimeout(function () {
@@ -95,30 +95,30 @@ define([
 				assert(store.renderItems instanceof Array);
 				assert.strictEqual(store.renderItems.length, 2);
 				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo", firstname: "1",
-					__item: store.store[0] });
+					__item: store.source[0] });
 				assert.deepEqual(store.renderItems[1], { id: "bar", name: "Bar", firstname: "2",
-					__item: store.store[1] });
+					__item: store.source[1] });
 
-				store.store.push({ id: "fb", name: "FB", firstname: "4" });
+				store.source.push({ id: "fb", name: "FB", firstname: "4" });
 				store.deliver();
 				assert.strictEqual(store.renderItems.length, 3);
 				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo", firstname: "1",
-					__item: store.store[0] });
+					__item: store.source[0] });
 				assert.deepEqual(store.renderItems[1], { id: "bar", name: "Bar", firstname: "2",
-					__item: store.store[1] });
+					__item: store.source[1] });
 				assert.deepEqual(store.renderItems[2], { id: "fb", name: "FB", firstname: "4",
-					__item: store.store[2] });
+					__item: store.source[2] });
 
-				store.store.splice(1, 1);
+				store.source.splice(1, 1);
 				store.deliver();
 				assert.strictEqual(store.renderItems.length, 2);
 				assert.deepEqual(store.renderItems[0], { id: "foo", name: "Foo", firstname: "1",
-					__item: store.store[0] });
+					__item: store.source[0] });
 				assert.deepEqual(store.renderItems[1], { id: "fb", name: "FB", firstname: "4",
-					__item: store.store[1] });
+					__item: store.source[1] });
 			}));
 			store.placeAt(container);
-			store.store = new ObservableArray({ id: "foo", name: "Foo", firstname: "1" },
+			store.source = new ObservableArray({ id: "foo", name: "Foo", firstname: "1" },
 				{ id: "bar", name: "Bar", firstname: "2" });
 			return d;
 		},
@@ -132,30 +132,30 @@ define([
 				assert(store.renderItems instanceof Array);
 				assert.strictEqual(store.renderItems.length, 2);
 				assert.deepEqual(store.renderItems[0], { id: "foo", foo: "Foo",
-					__item: store.store[0] });
+					__item: store.source[0] });
 				assert.deepEqual(store.renderItems[1], { id: "bar", foo: "Bar",
-					__item: store.store[1] });
+					__item: store.source[1] });
 
-				store.store.push({ id: "fb", name: "FB"});
+				store.source.push({ id: "fb", name: "FB"});
 				store.deliver();
 				assert.strictEqual(store.renderItems.length, 3);
 				assert.deepEqual(store.renderItems[0], { id: "foo", foo: "Foo",
-					__item: store.store[0] });
+					__item: store.source[0] });
 				assert.deepEqual(store.renderItems[1], { id: "bar", foo: "Bar",
-					__item: store.store[1] });
+					__item: store.source[1] });
 				assert.deepEqual(store.renderItems[2], { id: "fb", foo: "FB",
-					__item: store.store[2] });
+					__item: store.source[2] });
 
-				store.store.splice(1, 1);
+				store.source.splice(1, 1);
 				store.deliver();
 				assert.strictEqual(store.renderItems.length, 2);
 				assert.deepEqual(store.renderItems[0], { id: "foo", foo: "Foo",
-					__item: store.store[0] });
+					__item: store.source[0] });
 				assert.deepEqual(store.renderItems[1], { id: "fb", foo: "FB",
-					__item: store.store[1] });
+					__item: store.source[1] });
 			}));
 			store.placeAt(container);
-			store.store = new ObservableArray({ id: "foo", name: "Foo", firstname: "1" },
+			store.source = new ObservableArray({ id: "foo", name: "Foo", firstname: "1" },
 				{ id: "bar", name: "Bar", firstname: "2" });
 			return d;
 
@@ -181,7 +181,7 @@ define([
 				assert.deepEqual(store.renderItems[0].bar, "12");
 			}));
 			store.placeAt(container);
-			store.store = new ObservableArray({ id: "foo", name: "Foo", firstname: "1" },
+			store.source = new ObservableArray({ id: "foo", name: "Foo", firstname: "1" },
 				{ id: "bar", name: "Bar", firstname: "2" });
 			return d;
 		},
@@ -201,29 +201,29 @@ define([
 				assert(store.renderItems instanceof Array);
 				assert.strictEqual(store.renderItems.length, 2);
 				assert.deepEqual(store.renderItems[0], { id: "foo", foo: "Foo", bar: "1", m: "fct", n: "Foo1",
-					__item: store.store[0] });
+					__item: store.source[0] });
 				assert.deepEqual(store.renderItems[1], { id: "bar", foo: "Bar", bar: "2", m: "fct", n: "Bar2",
-					__item: store.store[1] });
+					__item: store.source[1] });
 
-				store.store.push({ id: "fb", name: "FB", firstname: "4" });
+				store.source.push({ id: "fb", name: "FB", firstname: "4" });
 				store.deliver();
 				assert.strictEqual(store.renderItems.length, 3);
 				assert.deepEqual(store.renderItems[0], { id: "foo", foo: "Foo", bar: "1", m: "fct", n: "Foo1",
-					__item: store.store[0] });
+					__item: store.source[0] });
 				assert.deepEqual(store.renderItems[1], { id: "bar", foo: "Bar", bar: "2", m: "fct", n: "Bar2",
-					__item: store.store[1] });
+					__item: store.source[1] });
 				assert.deepEqual(store.renderItems[2], { id: "fb", foo: "FB", bar: "4", m: "fct", n: "FB4",
-					__item: store.store[2] });
+					__item: store.source[2] });
 
-				store.store.splice(1, 1);
+				store.source.splice(1, 1);
 				store.deliver();
 				assert.strictEqual(store.renderItems.length, 2);
 				assert.deepEqual(store.renderItems[0], { id: "foo", foo: "Foo", bar: "1", m: "fct", n: "Foo1",
-					__item: store.store[0] });
+					__item: store.source[0] });
 				assert.deepEqual(store.renderItems[1], { id: "fb", foo: "FB", bar: "4", m: "fct", n: "FB4",
-					__item: store.store[1] });
+					__item: store.source[1] });
 			}));
-			store.store = new ObservableArray({ id: "foo", name: "Foo", firstname: "1" },
+			store.source = new ObservableArray({ id: "foo", name: "Foo", firstname: "1" },
 				{ id: "bar", name: "Bar", firstname: "2" });
 			return d;
 
@@ -242,18 +242,18 @@ define([
 				assert(store.renderItems instanceof Array);
 				assert.strictEqual(store.renderItems.length, 2);
 				assert.deepEqual(store.renderItems[0], { id: "foo", foo: "Foo", bar: "1",
-					__item: store.store[0] });
+					__item: store.source[0] });
 				assert.deepEqual(store.renderItems[1], { id: "bar", foo: "Bar", bar: "2",
-					__item: store.store[1] });
+					__item: store.source[1] });
 
 				store.renderItemToItem(store.renderItems[0]).then(d.callback(function (item) {
-					assert.deepEqual(item, store.store[0]);
+					assert.deepEqual(item, store.source[0]);
 					var renderItem = store.itemToRenderItem(item);
-					assert.deepEqual(renderItem, {id: "foo", foo: "Foo", bar: "1", __item: store.store[0]});
+					assert.deepEqual(renderItem, {id: "foo", foo: "Foo", bar: "1", __item: store.source[0]});
 				}));
 			}));
 			store.placeAt(container);
-			store.store = new ObservableArray({ id: "foo", name: "Foo", firstname: "1" },
+			store.source = new ObservableArray({ id: "foo", name: "Foo", firstname: "1" },
 				{ id: "bar", name: "Bar", firstname: "2" });
 			return d;
 		},

@@ -11,6 +11,16 @@ define([
 			if (args.length) {
 				this.mix(args[0]);
 			}
+			// affect the callbacks of the observe functions
+			this._itemHandles = [];
+			this._observeCallbackArray = this.__observeCallbackArray.bind(this);
+			this._observeCallbackItems = this.__observeCallbackItems.bind(this);
+			for (var i = 0; i < this.source.length; i++) {
+				// affect the callback to the observe function if the item is observable
+				this._itemHandles[i] = Observable.observe(this.source[i], this._observeCallbackItems);
+			}
+			// affect the callback to the observe function if the array is observable
+			this._arrayHandle = ObservableArray.observe(this.source, this._observeCallbackArray);
 		}),
 
 		mix: function (hash) {
@@ -22,77 +32,109 @@ define([
 		},
 
 		/**
-		 * Array that contains the items to display.
+		 * The array that contains the items to display.
 		 * @member {Array}
 		 * @default null
 		 */
 		data: null,
 
 		/**
-		 * The store that have created this WrapObservable object.
-		 * @member {delite/Store}
+		 * The array that the adapter represents (with all the items)
+		 * @member {Array}
 		 * @default null
 		 */
-		store: null,
+        source: null,
 
 		/**
-		 * Queries the store, creates the render items and calls initItems() when ready. If an error occurs
-		 * a 'query-error' event will be fired.
-		 *
-		 * This method is not supposed to be called by application developer.
-		 * It will be called automatically when modifying the store related properties or by the subclass
-		 * if needed.
-		 * @param processQueryResult - A function that processes the collection returned by the store query
-		 * and returns a new collection (to sort it, etc...)., applied before tracking.
-		 * @returns {Promise} If store to be processed is not null a promise that will be resolved when the loading
-		 * process will be finished.
-		 * @protected
+		 * A query filter to apply to the store.
+		 * @member {Object}
+		 * @default {}
 		 */
-		queryStoreAndInitItems: function (processQueryResult) {
-			this._untrack();
-			var array = this.store.store;
-			if (array != null) {
-				this.store._itemHandles = [];
-				this._observeCallbackArray = this.__observeCallbackArray.bind(this);
-				this._observeCallbackItems = this.__observeCallbackItems.bind(this);
-				for (var i = 0; i < array.length; i++) {
-					// affect the callback to the observe function if the item is observable
-					this.store._itemHandles[i] = Observable.observe(array[i], this._observeCallbackItems);
-				}
-				// affect the callback to the observe function if the array is observable
-				this.store._storeHandle = ObservableArray.observe(array, this._observeCallbackArray);
+		query: {},
 
-				this.data = processQueryResult.call(this.store, array.filter(this._isQueried, this));
-				var collection = this;
-				this.store._addListener = collection.on("add", function (evt) {
-					var i = evt.index - 1;
-					while (!this._isQueried(array[i])) {
-						i--;
-					}
-					var idx = collection.data.indexOf(array[i]);
-					collection.data.splice(idx + 1, 0, evt.obj);
-					this.store._itemAdded({index: idx + 1, target: evt.obj});
-				}.bind(this));
-				this.store._deleteListener = collection.on("delete", function (evt) {
-					var idx = collection.data.indexOf(evt.obj);
-					collection.data.splice(idx, 1);
-					this.store._itemRemoved({previousIndex: idx});
-				}.bind(this));
-				this.store._updateListener = collection.on("update", function (evt) {
-					var idx = collection.data.indexOf(evt.obj);
-					if (this._isQueried(evt.obj) && idx >= 0) {
-						this.store._itemUpdated({index: idx, previousIndex: idx, target: evt.obj});
-					} else if (this._isQueried(evt.obj) && idx < 0) {
-						this.emit("add", evt);
-					} else if (!this._isQueried(evt.obj) && idx >= 0) {
-						collection.data.splice(idx, 1);
-						this.store._itemRemoved({previousIndex: idx});
-					}
-				}.bind(this));
-				return this.store.processCollection(collection);
-			} else {
-				this.store.initItems([]);
+
+        /////////////////////////////////////////////////////////////////
+        // Functions dedicated to the Observability of the source
+        /////////////////////////////////////////////////////////////////
+
+		/**
+		 * Called to get the collection used by the delite/Store
+		 * @param processQueryResult
+		 * @returns {*} - ArrayToStoreAdapter
+		 */
+		_getCollection: function (processQueryResult) {
+			this.data = processQueryResult.call(this, this.source.filter(this._isQueried, this));
+			var res = this;
+			if (this._arrayHandle || this._itemHandles) {
+				res.obs = true;
 			}
+			return res;
+		},
+
+		/**
+		 * Function to add an item in the data and pass the good event to the function itemAdded of delite/Store
+		 * @param evt
+		 * @returns {{index: *, target: (*|evtUpdated.obj|evtRemoved.obj|evtAdded.obj|host.obj|obj)}}
+		 * @private
+		 */
+		_addItemToCollection: function (evt) {
+			var i = evt.index - 1;
+			while (!this._isQueried(this.source[i])) {
+				i--;
+			}
+			var idx = this.data.indexOf(this.source[i]);
+			this.data.splice(idx + 1, 0, evt.obj);
+			return {index: idx + 1, target: evt.obj};
+		},
+
+		/**
+		 * Function to remove an item from the data and pass the good event to the function itemRemoved of delite/Store
+		 * @param evt
+		 * @returns {{previousIndex: (*|number|Number)}}
+		 * @private
+		 */
+		_removeItemFromCollection: function (evt) {
+			var idx = this.data.indexOf(evt.obj);
+			this.data.splice(idx, 1);
+			return {previousIndex: idx};
+		},
+
+		/**
+		 * Function to test if the update was finally a remove or an add to the data
+		 * @param evt
+		 * @param idx
+		 * @returns {*|boolean}
+		 * @private
+		 */
+		_isAnUpdate: function (evt, idx) {
+			return (this._isQueried(evt.obj) && idx >= 0);
+		},
+
+		/**
+		 * Function that emit an event "add" if the update was finally an "add" and an event "remove" if it was a remove
+		 * @param evt
+		 * @param idx
+		 * @private
+		 */
+		_redirectEvt: function (evt, idx) {
+			if (this._isQueried(evt.obj) && idx < 0) {
+                var evtAdded = this._addItemToCollection(evt);
+				this.emit("add", evtAdded);
+			} else if (!this._isQueried(evt.obj) && idx >= 0) {
+                var evtRemoved = this._removeItemFromCollection(evt);
+				this.emit("delete", evtRemoved);
+			}
+		},
+
+		/**
+		 * Function to pass the good event to the function itemUpdated of delite/Store
+		 * @param evt
+		 * @param idx
+		 * @returns {{index: *, previousIndex: *, target: (*|evtUpdated.obj|evtRemoved.obj|evtAdded.obj|host.obj|obj)}}
+		 * @private
+		 */
+		_updateItemInCollection: function (evt, idx) {
+			return {index: idx, previousIndex: idx, target: evt.obj};
 		},
 
 		/**
@@ -103,35 +145,35 @@ define([
 			if (!this._beingDiscarded) {
 				for (var i = 0; i < changeRecords.length; i++) {
 					if (changeRecords[i].type === "splice") {
-						var j;
+						var j, evt;
 						for (j = 0; j < changeRecords[i].removed.length; j++) {
-							this.store._itemHandles[changeRecords[i].index].remove();
-							this.store._itemHandles.splice(changeRecords[i].index, 1);
+							this._itemHandles[changeRecords[i].index].remove();
+							this._itemHandles.splice(changeRecords[i].index, 1);
 							var evtRemoved = {previousIndex: changeRecords[i].index,
 								obj: changeRecords[i].removed[j]};
 							if (this._isQueried(evtRemoved.obj)) {
-								this.emit("delete", evtRemoved);
+								evt = this._removeItemFromCollection(evtRemoved);
+								this.emit("delete", evt);
 							}
-							this.store.emit("db-delete", evtRemoved);
 						}
 						for (j = 0; j < changeRecords[i].addedCount; j++) {
 							var evtAdded = {
 								index: changeRecords[i].index + j,
-								obj: this.store.store[changeRecords[i].index + j]
+								obj: this.source[changeRecords[i].index + j]
 							};
 							if (this.renderItems !== null && this.renderItems !== undefined) {
 								evtAdded.index = evtAdded.index <= this.renderItems.length ?
 									evtAdded.index : this.renderItems.length;
 							}
 							// affect the callback to the observe function if the item is observable
-							this.store._itemHandles.splice(changeRecords[i].index + j, 0,
+							this._itemHandles.splice(changeRecords[i].index + j, 0,
 								Observable.observe(
-									this.store.store[changeRecords[i].index + j], this._observeCallbackItems)
+									this.source[changeRecords[i].index + j], this._observeCallbackItems)
 							);
 							if (this._isQueried(evtAdded.obj)) {
-								this.emit("add", evtAdded);
+								evt = this._addItemToCollection(evtAdded);
+								this.emit("add", evt);
 							}
-							this.store.emit("db-add", evtAdded);
 						}
 					}
 				}
@@ -152,14 +194,19 @@ define([
 						if (changeRecords[i].type === "add" || changeRecords[i].type === "update" ||
 							changeRecords[i].type === "delete" || changeRecords[i].type === "splice") {
 							var evtUpdated = {
-								index: this.store.store.indexOf(object),
-								previousIndex: this.store.store.indexOf(object),
+								index: this.source.indexOf(object),
+								previousIndex: this.source.indexOf(object),
 								obj: object,
 								oldValue: changeRecords[i].oldValue,
 								name: changeRecords[i].name
 							};
-							this.emit("update", evtUpdated);
-							this.store.emit("db-update", evtUpdated);
+                            var idx = this.data.indexOf(evtUpdated.obj);
+                            if (!this._isAnUpdate(evtUpdated, idx)) {
+                                this._redirectEvt(evtUpdated, idx);
+                            } else {
+                                var evt = this._updateItemInCollection(evtUpdated, idx);
+                                this.emit("update", evt);
+                            }
 						}
 					}
 				}
@@ -171,50 +218,119 @@ define([
 		 * @param item
 		 * @private
 		 */
-		_isQueried: function (item) {
-			for (var prop in this.store.query) {
-				if (item[prop] !== this.store.query[prop]) {
-					return false;
-				}
-			}
-			return true;
+		_isQueried: function (item, index, tab, query) {
+			var realQuery = query ? query : this.query;
+            if (Object.getOwnPropertyNames(realQuery).length !== 0) {
+                if (typeof(realQuery) === "function") {
+                    return realQuery(item);
+                }
+                if (!(realQuery.type)) {
+                    var normalizedQuery = {};
+                    normalizedQuery.type = "eq";
+                    normalizedQuery.args = [];
+                    for (var property in realQuery) {
+                        normalizedQuery.args[0] = property;
+                        normalizedQuery.args[1] = realQuery[property];
+                    }
+                    realQuery = normalizedQuery;
+                }
+                var prop = realQuery.args[0];
+                var res = this._testItemProperty(prop, item, index, tab, realQuery);
+                if (res === true && realQuery.type !== "or") {
+                    return false;
+                } else if (res === true && realQuery.type === "or") {
+                    return true;
+                }
+                if (realQuery.type === "or") {
+                    return false;
+                }
+                return true;
+            } else {
+                return true;
+            }
 		},
 
-		/**
-		 * Called to perform the fetch operation on the collection.
-		 * @protected
-		 */
-		fetch: function () {
-			return Promise.resolve(this.data);
-		},
+        /**
+         * Used to reduce _isQueried complexity
+         * @param prop
+         * @param i
+         * @param item
+         * @param index
+         * @param tab
+         * @param queries
+         * @returns {boolean}
+         * @private
+         */
+        /* jshint maxcomplexity: 14*/
+        _testItemProperty: function (prop, item, index, tab, query) {
+            var res, res1, res2;
+            switch (query.type) {
+            case "eq":
+                res = (item[prop] !== query.args[1]);
+                break;
+            case "ne":
+                res = (item[prop] === query.args[1]);
+                break;
+            case "lt":
+                res = (item[prop] >= query.args[1]);
+                break;
+            case "lte":
+                res = (item[prop] > query.args[1]);
+                break;
+            case "gt":
+                res = (item[prop] <= query.args[1]);
+                break;
+            case "gte":
+                res = (item[prop] < query.args[1]);
+                break;
+            case "in":
+                res = ((query.args[1].indexOf(item[prop]) === -1));
+                break;
+            case "match":
+                res = (!(query.args[1].test(item[prop])));
+                break;
+            case "contains":
+                res = this._arrayContains(item[prop], query.args[1]);
+                break;
+            case "and":
+                res1 = (!(this._isQueried(item, index, tab, query.args[0])));
+                res2 = (!(this._isQueried(item, index, tab, query.args[1])));
+                res = res1 || res2;
+                break;
+            case "or":
+                res1 = (this._isQueried(item, index, tab, query.args[0]));
+                res2 = (this._isQueried(item, index, tab, query.args[1]));
+                res = res1 || res2;
+                break;
+            default:
+                throw new Error("Unknown filter operation '" + query.type + "'");
+            }
+            return res;
+        },
+        /* jshint maxcomplexity: 10*/
 
-		/**
-		 * Called to perform the fetchRange operation on the collection.
-		 * @param {args} - contains the start index and the end index of the fetch
-		 * @protected
-		 */
-		fetchRange: function (args) {
-			var res = this.data.slice(args.start, args.end);
-			if (res.length < (args.end - args.start)) {
-				var promise;
-				var evt = {start: args.start, end: args.end, resLength: res.length, setPromise: function (pro) {
-					promise = pro;
-				}};
-				this.store.emit("new-query-asked", evt);
-				return promise;
-			} else {
-				return Promise.resolve(res);
-			}
-		},
+        /**
+         * Function to test if an array contains all the values in parameter values
+         * @param array
+         * @param values
+         * @returns {*}
+         * @private
+         */
+        _arrayContains: function (array, values) {
+            for (var j = 0; j < values.length; j++) {
+                var res = res ? res : (array.indexOf(values[j]) === -1);
+            }
+            return res;
+        },
 
 		/**
 		 * Synchronously deliver change records to all listeners registered via `observe()`.
 		 */
 		deliver:  function () {
-			if (this.store._storeHandle) {
-				this.store._storeHandle.deliver();
+			if (this._arrayHandle) {
+				this._arrayHandle.deliver();
 			}
-			if (this.store._itemHandles) {
+			if (this._itemHandles.length !== 0) {
 				this._observeCallbackItems && Observable.deliverChangeRecords(this._observeCallbackItems);
 			}
 		},
@@ -223,34 +339,61 @@ define([
 		 * Discard change records for all listeners registered via `observe()`.
 		 */
 		discardChanges: function () {
-			if (this.store._storeHandle && this.store._itemHandles) {
+			if (this._arrayHandle && this._itemHandles) {
 				this._beingDiscarded = true;
-				this.store._storeHandle.deliver();
+				this._arrayHandle.deliver();
 				this._observeCallbackItems && Observable.deliverChangeRecords(this._observeCallbackItems);
 				this._beingDiscarded = false;
-				return this.store;
+				return this;
 			}
 		},
 
+		/**
+		 * Function to remove the observability on the array and its items
+		 * @private
+		 */
 		_untrack: function () {
-			if (this.store._storeHandle) {
-				this.store._storeHandle.remove();
+			if (this._arrayHandle) {
+				this._arrayHandle.remove();
 			}
-			if (this.store._itemHandles) {
-				for (var i = 0; i < this.store._itemHandles.length; i++) {
-					this.store._itemHandles[i].remove();
+			if (this._itemHandles) {
+				for (var i = 0; i < this._itemHandles.length; i++) {
+					this._itemHandles[i].remove();
 				}
 			}
-			if (this.store._addListener) {
-				this.store._addListener.remove(this.store._addListener);
-			}
-			if (this.store._deleteListener) {
-				this.store._deleteListener.remove(this.store._deleteListener);
-			}
-			if (this.store._updateListener) {
-				this.store._updateListener.remove(this.store._updateListener);
-			}
 		},
+
+
+        /////////////////////////////////////////////////////////////////////////
+        // Functions dedicated to reproduce the behaviour of dstore functions
+        /////////////////////////////////////////////////////////////////////////
+
+        /**
+         * Called to perform the fetch operation on the collection.
+         * @protected
+         */
+        fetch: function () {
+            return Promise.resolve(this.data);
+        },
+
+        /**
+         * Called to perform the fetchRange operation on the collection.
+         * @param {args} - contains the start index and the end index of the fetch
+         * @protected
+         */
+        fetchRange: function (args) {
+            var res = this.data.slice(args.start, args.end);
+            if (res.length < (args.end - args.start)) {
+                var promise;
+                var evt = {start: args.start, end: args.end, resLength: res.length, setPromise: function (pro) {
+                    promise = pro;
+                }};
+                this.emit("_new-query-asked", evt);
+                return promise;
+            } else {
+                return Promise.resolve(res);
+            }
+        },
 
 		/**
 		 * Set the identity of an object
@@ -282,4 +425,110 @@ define([
 			return item.id !== undefined ? item.id : this.data.indexOf(item);
 		}
 	});
+
+/*====
+    _getCollection: function (processQueryResult) {
+        // summary:
+        //		Filter the array in store with the query to set the data and return the ArrayToStoreAdapter
+        //		in collection variable of delite/Store
+        // processQueryResult: Function
+		//		Function apply on the array or its objects (sort for example).
+		// returns: ArrayToStoreAdapter
+	},
+	_addItemToCollection: function (evt) {
+        // summary:
+		//		Function to add an item in the data and pass the good event to the function itemAdded of delite/Store
+		// evt: Object
+		//		The event send by the observe callbacks to transmit to the function itemAdded of delite/Store
+		// returns: evt
+	},
+	_removeItemFromCollection: function (evt) {
+		 // summary:
+		 //		Function to remove an item from the data and pass the good event to the function itemRemoved
+		 //     of delite/Store
+		 // evt: Object
+		 //		The event send by the observe callbacks to transmit to the function itemRemoved of delite/Store
+		 // returns: evt
+	 },
+	_isAnUpdate: function (evt, idx) {
+		// summary:
+		//		Function to test if the update was finally a remove or an add to the data
+		//		return true if it is an update.
+		// evt:
+		//		The event send by the observe callbacks
+		// idx:
+		//		The index of the item in the data. (= -1 if the item is not in the data)
+		// returns:
+		//		Boolean
+	},
+	_redirectEvt: function (evt, idx) {
+		// summary:
+		//		Function that emit an event "add" if the update was finally an "add" and an event "remove"
+		//		if it was a remove
+		// evt:
+		//		The event send by the observe callbacks
+		// idx:
+		//		The index of the item in the data. (= -1 if the item is not in the data)
+	},
+	_updateItemInCollection: function (evt) {
+		// summary:
+		//		Function to update an item in the data and pass the good event to the function itemUpdated
+		//		of delite/Store
+		// evt: Object
+		//		The event send by the observe callbacks to transmit to the function itemUpdated of delite/Store
+		// returns: evt
+	},
+	__observeCallbackArray: function (changeRecords) {
+        // summary:
+        //		Function called when a modification is done on the array.
+        //		Read trough the changeRecords to send the appropriate events to the delite/Store ("remove" or "add").
+        // changeRecords: Object
+        //		The changeRecords registered by the array (based on splice type) - see decor/ObservableArray
+    __observeCallbackItems: function (changeRecords) {
+        // summary:
+        //		Function called when a modification is done on an item of the array.
+        //		Read trough the changeRecords and send the appropriate events to the delite/Store ("update").
+        // changeRecords: Object
+        //		The changeRecords registered by the item ("add", "delete" or "update" type) - see decor/Observable
+	_isQueried: function (item) {
+        // summary:
+        //		Called to verify if the item respect the query conditions, using this.query.
+        // item: Object
+        //		The item to test
+        // return: Boolean
+    fetch: function () {
+        // summary:
+        //		Called to perform the fetch operation on the adapter.
+        // return: Promise - containing all the data queried (= this.data)
+    fetchRange: function (args) {
+        // summary:
+        //		Called to perform the fetchRange operation on the adapter.
+        //		Asks for more data if the number of data collect is inferior to what is expected (send the event
+        //		"_new-query-asked" to the delite/Store).
+        // args: Object : {start, end)
+        //		Contains the start and end indexes of the fetchRnage operation
+        // return: Promise - containing the data queried between index start and index
+    deliver:  function () {
+        // summary:
+        //		Synchronously deliver change records to all listeners registered via `observe()`.
+    discardChanges: function () {
+        // summary:
+        //		Discard change records for all listeners registered via `observe()`.
+	_untrack: function () {
+        // summary:
+        //		Function to remove the observability on the array and its items
+	_setIdentity: function (item, id) {
+	    // summary:
+        //		Function used to set the id of an item - (used in delite/StoreMap)
+        // item: Object - the item to set id
+        // id: value of the id to set
+    get: function (id) {
+        // summary:
+        //		Retrieves an object in the data by its identity (used occasionally by StoreMap)
+        // id: the id of the object to get
+    getIdentity: function (item) {
+        // summary:
+        //		Get the identity of an object (that means the id of the object or his index in the data)
+        // item: the item to get the identity
+====*/
 });

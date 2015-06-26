@@ -36,7 +36,7 @@ define([
 	 */
 	return dcl(Invalidating, /** @lends module:delite/Store# */{
 
-		store: null,/**
+		source: null,/**
 		 * The store that contains the items to display.
 		 * @member {dstore/Store}
 		 * @default null
@@ -57,7 +57,7 @@ define([
 		 * Only works when using dstore/Store in store field (do not with ObservableArray)
 		 * @default identity function
 		 */
-		processQueryResult: function (store) { return store; },
+		processQueryResult: function (source) { return source; },
 
 		/**
 		 * The render items corresponding to the store items for this widget. This is filled from the store and
@@ -111,12 +111,7 @@ define([
 		 * @protected
 		 */
 		computeProperties: function (props) {
-			if ("store" in props || "query" in props) {
-				if (!Array.isArray(this.store)) {
-					this._storeAdapter = new DstoreToStoreAdapter({store: this});
-				} else {
-					this._storeAdapter = new ArrayToStoreAdapter({store: this});
-				}
+			if ("source" in props || "query" in props) {
 				this.queryStoreAndInitItems(this.processQueryResult);
 			}
 		},
@@ -135,7 +130,42 @@ define([
 		 * @protected
 		 */
 		queryStoreAndInitItems: function (processQueryResult) {
-			return this._storeAdapter.queryStoreAndInitItems(processQueryResult);
+			this._untrack();
+			if (!Array.isArray(this.source)) {
+				this._storeAdapter = new DstoreToStoreAdapter({source: this.source, query: this.query});
+			} else {
+				this._storeAdapter = new ArrayToStoreAdapter({source: this.source, query: this.query});
+			}
+			if (this.source != null) {
+				if (!this.source.filter && this.source instanceof HTMLElement && !this.source.attached) {
+					// this might a be a store custom element, wait for it
+					this.source.addEventListener("customelement-attached",
+                        this.source._attachedlistener = function () {
+                            this.queryStoreAndInitItems(this.source.processQueryResult);
+					    }.bind(this));
+				} else {
+					if (this.source._attachedlistener) {
+						this.source.removeEventListener("customelement-attached",
+                            this.source._attachedlistener);
+					}
+				}
+				var collection = this._storeAdapter._getCollection(processQueryResult);
+				if (collection.track || collection.obs) {
+					if (collection.track) {
+						// user asked us to observe the store
+						collection = this._storeAdapter._tracked = collection.track();
+					}
+					this._addListener = collection.on("add", this._itemAdded.bind(this));
+					this._deleteListener = collection.on("delete", this._itemRemoved.bind(this));
+					this._updateListener = collection.on("update", this._itemUpdated.bind(this));
+					collection.on("_new-query-asked", function (evt) {
+						this.emit("new-query-asked", evt);
+					}.bind(this));
+				}
+				return this.processCollection(collection);
+			} else {
+				this.initItems([]);
+			}
 		},
 
 		/**
@@ -188,7 +218,18 @@ define([
 		},
 
 		_untrack: function () {
-			this._storeAdapter._untrack();
+			if (this._storeAdapter) {
+				this._storeAdapter._untrack();
+			}
+			if (this._addListener) {
+				this._addListener.remove(this._addListener);
+			}
+			if (this._deleteListener) {
+				this._deleteListener.remove(this._deleteListener);
+			}
+			if (this._updateListener) {
+				this._updateListener.remove(this._updateListener);
+			}
 		},
 
 		detachedCallback: function () {
