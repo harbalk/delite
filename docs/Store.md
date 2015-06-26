@@ -15,19 +15,19 @@ way of doing things.
 
 The store is queried each time one of the following properties is set on the instance:
 
-* store: references a `dstore/api/Store` implementation or a simple array
+* source: references a `dstore/api/Store` implementation or an array
 * query: a query object to be passed to the store `filter()` function
 
-## Create render items from the store items
+## Create render items from the source items
 
-When the store is queried, render items are created using the `itemToRenderItem()` function which by default just returns the
-store item. Render items are typically used in widgets rendering several "data items" (arbitrary number of items
+When the source is queried, render items are created using the `itemToRenderItem()` function which by default just returns the
+source item. Render items are typically used in widgets rendering several "data items" (arbitrary number of items
 connected to data) to specify how those "data items" have to be rendered. This means the render items are used as input
 for the various "data items" rendered in the widget. Depending on the targeted widget, render items expect several
 properties to be present like a label, an icon etc. Classes using the mixin might override `itemToRenderItem()` to create
 their own render items.
 
-For example the store item (typically coming from a data server) might contain:
+For example the source item (typically coming from a data server) might contain:
 
 ```js
 {
@@ -57,13 +57,13 @@ Once created the render items array is passed into the `initItems()` function an
 
 ## Observability/Trackability
 
-In addition to this, the store can be an observable store.
-There are various possibilities to make the store observable.
+In addition to this, the source can be observable.
+There are various possibilities to make the source observable.
 
-#### Observable store with `dstore/Trackable` in store property
+#### Observable source with `dstore/Trackable` in source property
 
-The first one is to use a `dstore/Trackable` in the store.
-By using that, the changes to the data in the store will be tracked and the following functions will be called on each
+The first one is to use a `dstore/Trackable` in the source.
+By using that, the changes to the data in the source will be tracked and the following functions will be called on each
 type of modification:
 
 * `itemRemoved` if an item has been removed
@@ -73,24 +73,24 @@ type of modification:
 
 By default those functions update the `renderItems` accordingly.
 
-#### Observable store with an array in store property
+#### Observable source with an array in source property
 
-The way to make the store observable with an array is to use a observable array with observable objects as items
-in the store.
+The way to make the source observable with an array is to use a observable array with observable objects as items
+in the source.
 If the browser used has implemented the Array.observe() and the Object.observe() function of EC7, then the array is
 automatically observable and the items too.
 If not, the solution is to implement the array with `decor/ObservableArray` and the items with `decor/Observable`.
 
-By using that, the changes to the data in the store will be tracked and the following functions will be called on each
+By using that, the changes to the data in the source will be tracked and the following functions will be called on each
 type of modification:
 
 * `itemRemoved` if an item has been removed
 * `itemAdded` if an item has been added
 * `itemUpdated` if an item has been updated (its properties have changed)
 
-Note : For browsers without implementation of the observe function : if the store is a `decor/ObservableArray` but is not
+Note : For browsers without implementation of the observe function : if the source is a `decor/ObservableArray` but is not
 using `decor/Observable` objects as item, the function itemUpdated will not be called, but itemAdded and itemRemoved will.
-Inversely if the store is a simple array but using `decor/Observable` objects, only the function itemUpdated will be
+Inversely if the source is a simple array but using `decor/Observable` objects, only the function itemUpdated will be
 called.
 
 By default those functions update the `renderItems` accordingly.

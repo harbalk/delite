@@ -1,6 +1,6 @@
 /** @module delite/StoreMap */
-define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store", "decor/ObservableArray"],
-	function (dcl, Promise, Store, ObservableArray) {
+define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store", "decor/ObservableArray", "decor/Observable"],
+	function (dcl, Promise, Store, ObservableArray, Observable) {
 
 	var getvalue = function (map, item, key, store) {
 		if (map[key + "Func"]) {
@@ -114,6 +114,14 @@ define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store", "decor/ObservableAr
 			};
 		}),
 
+        preRender: function () {
+            // Get the data from the textContent and clear it
+            if (this.source === null && this.textContent !== "") {
+                this._saveData(this.textContent);
+                this.textContent = "";
+            }
+        },
+
 		attachedCallback: function () {
 			// This runs after the attributes have been processed (and converted into properties),
 			// and after any properties specified to the constructor have been mixed in.
@@ -136,14 +144,13 @@ define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store", "decor/ObservableAr
 				}
 			}
 
-			if (this.store === null && this.textContent !== "") {
-				var data = JSON.parse("[" + this.textContent + "]");
-				for (var j = 0; j < data.length; j++) {
-					if (!data[j].id) {
-						data[j].id = Math.random();
-					}
-				}
-				this.store = ObservableArray.apply(undefined, data);
+            // Setting the source with the data got from the textContent (not done in preRender because the source
+            // is not send in the props list when it is modified there)
+			if (this._source) {
+				this.source = new ObservableArray();
+                for (var j = 0; j < this._source.length; j++) {
+                    this.source[j] = new Observable(this._source[j]);
+                }
 			}
 
 			this._mappedKeys = mappedKeys;
@@ -155,6 +162,22 @@ define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store", "decor/ObservableAr
 			}
 
 		},
+
+        /**
+         * Get the data from the textContent of the widget and set them in source property in an array
+         * @param text
+         */
+        _saveData: function (text) {
+            var data = JSON.parse("[" + text + "]");
+            for (var j = 0; j < data.length; j++) {
+                if (!data[j].id) {
+                    data[j].id = Math.random();
+                }
+            }
+            if (data.length !== 0) {
+                this._source = data;
+            }
+        },
 
 		/**
 		 * Creates a store item based from the widget internal item based on the various mapped properties. Works 
@@ -225,7 +248,7 @@ define(["dcl/dcl", "requirejs-dplugins/Promise!", "./Store", "decor/ObservableAr
 			var mappedKeys = this._mappedKeys;
 			for (var i = 0; i < items.length; i++) {
 				for (var j = 0; j < mappedKeys.length; j++) {
-					items[i][mappedKeys[j]] = getvalue(this, items[i].__item, mappedKeys[j], this.store);
+					items[i][mappedKeys[j]] = getvalue(this, items[i].__item, mappedKeys[j], this.source);
 				}
 			}
 		}
