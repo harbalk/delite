@@ -234,17 +234,7 @@ define([
                     }
                     realQuery = normalizedQuery;
                 }
-                var prop = realQuery.args[0];
-                var res = this._testItemProperty(prop, item, index, tab, realQuery);
-                if (res === true && realQuery.type !== "or") {
-                    return false;
-                } else if (res === true && realQuery.type === "or") {
-                    return true;
-                }
-                if (realQuery.type === "or") {
-                    return false;
-                }
-                return true;
+                return this._testItemProperty(realQuery.args[0], item, index, tab, realQuery);
             } else {
                 return true;
             }
@@ -263,49 +253,34 @@ define([
          */
         /* jshint maxcomplexity: 14*/
         _testItemProperty: function (prop, item, index, tab, query) {
-            var res, res1, res2;
             switch (query.type) {
             case "eq":
-                res = (item[prop] !== query.args[1]);
-                break;
+                return (item[prop] === query.args[1]);
             case "ne":
-                res = (item[prop] === query.args[1]);
-                break;
+                return (item[prop] !== query.args[1]);
             case "lt":
-                res = (item[prop] >= query.args[1]);
-                break;
+                return (item[prop] < query.args[1]);
             case "lte":
-                res = (item[prop] > query.args[1]);
-                break;
+                return (item[prop] <= query.args[1]);
             case "gt":
-                res = (item[prop] <= query.args[1]);
-                break;
+                return (item[prop] > query.args[1]);
             case "gte":
-                res = (item[prop] < query.args[1]);
-                break;
+                return (item[prop] >= query.args[1]);
             case "in":
-                res = ((query.args[1].indexOf(item[prop]) === -1));
-                break;
+                return ((query.args[1].indexOf(item[prop]) !== -1));
             case "match":
-                res = (!(query.args[1].test(item[prop])));
-                break;
+                return (query.args[1].test(item[prop]));
             case "contains":
-                res = this._arrayContains(item[prop], query.args[1]);
-                break;
+                return this._arrayContains(item[prop], query.args[1]);
             case "and":
-                res1 = (!(this._isQueried(item, index, tab, query.args[0])));
-                res2 = (!(this._isQueried(item, index, tab, query.args[1])));
-                res = res1 || res2;
-                break;
+                return (this._isQueried(item, index, tab, query.args[0]))
+                    && (this._isQueried(item, index, tab, query.args[1]));
             case "or":
-                res1 = (this._isQueried(item, index, tab, query.args[0]));
-                res2 = (this._isQueried(item, index, tab, query.args[1]));
-                res = res1 || res2;
-                break;
+                return (this._isQueried(item, index, tab, query.args[0]))
+                    || (this._isQueried(item, index, tab, query.args[1]));
             default:
                 throw new Error("Unknown filter operation '" + query.type + "'");
             }
-            return res;
         },
         /* jshint maxcomplexity: 10*/
 
@@ -318,9 +293,11 @@ define([
          */
         _arrayContains: function (array, values) {
             for (var j = 0; j < values.length; j++) {
-                var res = res ? res : (array.indexOf(values[j]) === -1);
+                if (array.indexOf(values[j]) === -1) {
+                    return false;
+                }
             }
-            return res;
+            return true;
         },
 
 		/**
@@ -425,110 +402,4 @@ define([
 			return item.id !== undefined ? item.id : this.data.indexOf(item);
 		}
 	});
-
-/*====
-    _getCollection: function (processQueryResult) {
-        // summary:
-        //		Filter the array in store with the query to set the data and return the ArrayToStoreAdapter
-        //		in collection variable of delite/Store
-        // processQueryResult: Function
-		//		Function apply on the array or its objects (sort for example).
-		// returns: ArrayToStoreAdapter
-	},
-	_addItemToCollection: function (evt) {
-        // summary:
-		//		Function to add an item in the data and pass the good event to the function itemAdded of delite/Store
-		// evt: Object
-		//		The event send by the observe callbacks to transmit to the function itemAdded of delite/Store
-		// returns: evt
-	},
-	_removeItemFromCollection: function (evt) {
-		 // summary:
-		 //		Function to remove an item from the data and pass the good event to the function itemRemoved
-		 //     of delite/Store
-		 // evt: Object
-		 //		The event send by the observe callbacks to transmit to the function itemRemoved of delite/Store
-		 // returns: evt
-	 },
-	_isAnUpdate: function (evt, idx) {
-		// summary:
-		//		Function to test if the update was finally a remove or an add to the data
-		//		return true if it is an update.
-		// evt:
-		//		The event send by the observe callbacks
-		// idx:
-		//		The index of the item in the data. (= -1 if the item is not in the data)
-		// returns:
-		//		Boolean
-	},
-	_redirectEvt: function (evt, idx) {
-		// summary:
-		//		Function that emit an event "add" if the update was finally an "add" and an event "remove"
-		//		if it was a remove
-		// evt:
-		//		The event send by the observe callbacks
-		// idx:
-		//		The index of the item in the data. (= -1 if the item is not in the data)
-	},
-	_updateItemInCollection: function (evt) {
-		// summary:
-		//		Function to update an item in the data and pass the good event to the function itemUpdated
-		//		of delite/Store
-		// evt: Object
-		//		The event send by the observe callbacks to transmit to the function itemUpdated of delite/Store
-		// returns: evt
-	},
-	__observeCallbackArray: function (changeRecords) {
-        // summary:
-        //		Function called when a modification is done on the array.
-        //		Read trough the changeRecords to send the appropriate events to the delite/Store ("remove" or "add").
-        // changeRecords: Object
-        //		The changeRecords registered by the array (based on splice type) - see decor/ObservableArray
-    __observeCallbackItems: function (changeRecords) {
-        // summary:
-        //		Function called when a modification is done on an item of the array.
-        //		Read trough the changeRecords and send the appropriate events to the delite/Store ("update").
-        // changeRecords: Object
-        //		The changeRecords registered by the item ("add", "delete" or "update" type) - see decor/Observable
-	_isQueried: function (item) {
-        // summary:
-        //		Called to verify if the item respect the query conditions, using this.query.
-        // item: Object
-        //		The item to test
-        // return: Boolean
-    fetch: function () {
-        // summary:
-        //		Called to perform the fetch operation on the adapter.
-        // return: Promise - containing all the data queried (= this.data)
-    fetchRange: function (args) {
-        // summary:
-        //		Called to perform the fetchRange operation on the adapter.
-        //		Asks for more data if the number of data collect is inferior to what is expected (send the event
-        //		"_new-query-asked" to the delite/Store).
-        // args: Object : {start, end)
-        //		Contains the start and end indexes of the fetchRnage operation
-        // return: Promise - containing the data queried between index start and index
-    deliver:  function () {
-        // summary:
-        //		Synchronously deliver change records to all listeners registered via `observe()`.
-    discardChanges: function () {
-        // summary:
-        //		Discard change records for all listeners registered via `observe()`.
-	_untrack: function () {
-        // summary:
-        //		Function to remove the observability on the array and its items
-	_setIdentity: function (item, id) {
-	    // summary:
-        //		Function used to set the id of an item - (used in delite/StoreMap)
-        // item: Object - the item to set id
-        // id: value of the id to set
-    get: function (id) {
-        // summary:
-        //		Retrieves an object in the data by its identity (used occasionally by StoreMap)
-        // id: the id of the object to get
-    getIdentity: function (item) {
-        // summary:
-        //		Get the identity of an object (that means the id of the object or his index in the data)
-        // item: the item to get the identity
-====*/
 });

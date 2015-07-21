@@ -13,7 +13,7 @@ define([
 	var container;
 
 	registerSuite({
-		name: "StoreMap-ArrayObs",
+		name: "StoreMap-ObservableArray",
 
 		setup: function () {
 			container = document.createElement("div");
@@ -21,7 +21,7 @@ define([
 		},
 
 		Regular: function () {
-			var C = register("test-storemap-arrayobs-1", [HTMLElement, Widget, StoreMap], {
+			var C = register("test-storemap-observableArray-1", [HTMLElement, Widget, StoreMap], {
 				fooAttr: "name",
 				barFunc: function (item) {
 					return item.firstname;
@@ -63,7 +63,7 @@ define([
 
 		// Test case for delite #283.
 		RegularLateStartup: function () {
-			var C = register("test-storemap-arrayobs-late-startup", [HTMLElement, Widget, StoreMap], {
+			var C = register("test-storemap-observableArray-late-startup", [HTMLElement, Widget, StoreMap], {
 				fooAttr: "name",
 				barFunc: function (item) {
 					return item.firstname;
@@ -86,7 +86,7 @@ define([
 		},
 
 		copyAll: function () {
-			var C = register("test-storemap-arrayobs-2", [HTMLElement, Widget, StoreMap], {
+			var C = register("test-storemap-observableArray-2", [HTMLElement, Widget, StoreMap], {
 				copyAllItemProps: true
 			});
 			var d = this.async(2000);
@@ -124,7 +124,7 @@ define([
 		},
 
 		InCtor: function () {
-			var C = register("test-storemap-arrayobs-3", [HTMLElement, Widget, StoreMap], {
+			var C = register("test-storemap-observableArray-3", [HTMLElement, Widget, StoreMap], {
 			});
 			var d = this.async(2000);
 			var store = new C({"fooAttr": "name"});
@@ -163,7 +163,7 @@ define([
 
 		AllowRemap: function () {
 			var value = "1";
-			var C = register("test-storemap-arrayobs-4", [HTMLElement, Widget, StoreMap], {
+			var C = register("test-storemap-observableArray-4", [HTMLElement, Widget, StoreMap], {
 				allowRemap: true,
 				fooAttr: "name",
 				barFunc: function (item) {
@@ -187,12 +187,12 @@ define([
 		},
 
 		Markup: function () {
-			register("test-storemap-arrayobs-5", [HTMLElement, Widget, StoreMap], {
+			register("test-storemap-observableArray-5", [HTMLElement, Widget, StoreMap], {
 				fooAttr: "name"
 			});
 			/* global fct:true */
 			fct = function () { return "fct"; };
-			container.innerHTML = "<test-storemap-arrayobs-5 id='ts5' barAttr='firstname' mFunc='fct' " +
+			container.innerHTML = "<test-storemap-observableArray-5 id='ts5' barAttr='firstname' mFunc='fct' " +
 			"nFunc='return item.name + item.firstname;'></test-storemap-5>";
 			register.parse(container);
 			var d = this.async(2000);
@@ -230,7 +230,7 @@ define([
 		},
 
 		ItemToAndFrom: function () {
-			var C = register("test-storemap-arrayobs-6", [HTMLElement, Widget, StoreMap], {
+			var C = register("test-storemap-observableArray-6", [HTMLElement, Widget, StoreMap], {
 				fooAttr: "name",
 				barFunc: function (item) {
 					return item.firstname;

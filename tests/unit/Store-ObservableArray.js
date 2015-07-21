@@ -1,26 +1,12 @@
 define([
 	"intern!object",
-	"intern/chai!assert", "dcl/dcl", "dojo/_base/declare",
-	"delite/register", "delite/Widget", "delite/Store", "decor/Observable", "decor/ObservableArray", "dstore/Filter"
-], function (registerSuite, assert, dcl, declare, register, Widget, Store, Observable, ObservableArray, Filter) {
-	var C = register("test-store-arrayobs", [HTMLElement, Widget, Store]);
+	"intern/chai!assert", "dcl/dcl", "dojo/_base/declare", "delite/register", "delite/Widget", "delite/Store",
+    "decor/Observable", "decor/ObservableArray", "dstore/Filter", "requirejs-dplugins/Promise!"
+], function (registerSuite, assert, dcl, declare, register, Widget, Store,
+             Observable, ObservableArray, Filter, Promise) {
+	var C = register("test-store-observableArray", [HTMLElement, Widget, Store]);
 	registerSuite({
-		name: "Store-ArrayObs",
-		/*
-		 // commented out until https://github.com/ibm-js/delite/issues/93 fixed
-		 "Error" : function () {
-		 var d = this.async(2000);
-		 var store = new C();
-		 var callbackCalled = false;
-		 store.on("query-error", function () {
-		 // should fire before the timeout
-		 d.resolve();
-		 });
-		 store.attachedCallback();
-		 store.source = new Rest({ target: "/" });
-		 return d;
-		 },
-		 */
+		name: "Store-ObservableArray",
 
 		Updates: function () {
 			var d = this.async(1500);
@@ -490,6 +476,31 @@ define([
 			store.source = new ObservableArray(obj, obj2);
 			return d;
 		},
+
+        "'new-query-asked' event": function () {
+            var d = this.async(1500);
+            var store = new C();
+            store.fetch = function (collection) {
+                return collection.fetchRange({start: 0, end: 3});
+            };
+            store.on("new-query-asked", function (evt) {
+                evt.setPromise(new Promise(function (resolve) {
+                    var arr = [
+                        { id: "foo", name: "Foo" },
+                        { id: "bar", name: "Bar" },
+                        { id: "bar2", name: "Bar2" }
+                    ];
+                    resolve(arr.slice(evt.start, evt.end));
+                }));
+            });
+            store.on("query-success", d.callback(function () {
+                assert(store.renderItems instanceof Array);
+                assert.strictEqual(store.renderItems.length, 3);
+            }));
+            store.source = new ObservableArray({ id: "foo", name: "Foo" },
+                { id: "bar", name: "Bar" });
+            return d;
+        },
 
 		teardown: function () {
 			//container.parentNode.removeChild(container);

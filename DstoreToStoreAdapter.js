@@ -70,29 +70,4 @@ define([
 			return this.source.getIdentity(item);
 		}
 	});
-/*====
-	 _getCollection: function (processQueryResult) {
-		 // summary:
-		 //		Filter the store and return the result
-		 // processQueryResult: Function
-		 //		Function apply on the dstore.
-		 // returns: {dstore}
-	 _untrack: function () {
-		 // summary:
-		 //		Function to remove the trackability of the dstore
-	 _setIdentity: function (item, id) {
-		 // summary:
-		 //		Function used to set the id of an item - (used in delite/StoreMap)
-		 // item: Object - the item to set id
-		 // id: value of the id to set
-	 get: function (id) {
-		 // summary:
-		 //		Retrieves an object in the data by its identity (used occasionally by StoreMap)
-		 // id: the id of the object to get
-	 getIdentity: function (item) {
-		 // summary:
-		 //		Get the identity of an object
-		 // item: Object - the item to get the identity
-	 }
-====*/
 });
