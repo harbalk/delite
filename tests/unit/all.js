@@ -19,7 +19,7 @@ define([
 	"./Scrollable",
 	"./KeyNav",
 	"./FormWidget",
-    "./FormValueWidget",
-    "./Bidi",
-    "./HasDropDown"
+	"./FormValueWidget",
+	"./Bidi",
+	"./HasDropDown"
 ]);

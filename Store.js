@@ -140,13 +140,13 @@ define([
 				if (!this.source.filter && this.source instanceof HTMLElement && !this.source.attached) {
 					// this might a be a store custom element, wait for it
 					this.source.addEventListener("customelement-attached",
-                        this.source._attachedlistener = function () {
-                            this.queryStoreAndInitItems(this.source.processQueryResult);
-					    }.bind(this));
+						this.source._attachedlistener = function () {
+							this.queryStoreAndInitItems(this.source.processQueryResult);
+						}.bind(this));
 				} else {
 					if (this.source._attachedlistener) {
 						this.source.removeEventListener("customelement-attached",
-                            this.source._attachedlistener);
+							this.source._attachedlistener);
 					}
 				}
 				var collection = this._storeAdapter._getCollection(processQueryResult);

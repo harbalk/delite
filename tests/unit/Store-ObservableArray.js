@@ -1,9 +1,9 @@
 define([
 	"intern!object",
 	"intern/chai!assert", "dcl/dcl", "dojo/_base/declare", "delite/register", "delite/Widget", "delite/Store",
-    "decor/Observable", "decor/ObservableArray", "dstore/Filter", "requirejs-dplugins/Promise!"
+	"decor/Observable", "decor/ObservableArray", "dstore/Filter", "requirejs-dplugins/Promise!"
 ], function (registerSuite, assert, dcl, declare, register, Widget, Store,
-             Observable, ObservableArray, Filter, Promise) {
+			 Observable, ObservableArray, Filter, Promise) {
 	var C = register("test-store-observableArray", [HTMLElement, Widget, Store]);
 	registerSuite({
 		name: "Store-ObservableArray",
@@ -135,7 +135,7 @@ define([
 			var d = this.async(1500);
 			var store1 = new C();
 			//store1.query = { type: "ne", values: {id: 1} };
-            store1.query = new Filter().ne("id", 1);
+			store1.query = new Filter().ne("id", 1);
 			store1.on("query-success", d.rejectOnError(function () {
 				assert(store1.renderItems instanceof Array);
 				assert.strictEqual(store1.renderItems.length, 8, "ne");
@@ -153,7 +153,7 @@ define([
 				{ id: 9, name: "item 9", number: 8 });
 			var store2 = new C();
 			//store2.query = { type: "gt", values: {number: 5} };
-            store2.query = new Filter().gt("number", 5);
+			store2.query = new Filter().gt("number", 5);
 			store2.deliver();
 			store2.on("query-success", d.rejectOnError(function () {
 				assert.strictEqual(store2.renderItems.length, 5, "gt");
@@ -170,7 +170,7 @@ define([
 				{ id: 9, name: "item 9", number: 8 });
 			var store3 = new C();
 			//store3.query = {type: "gte", values: {number: 5}};
-            store3.query = new Filter().gte("number", 5);
+			store3.query = new Filter().gte("number", 5);
 			store3.deliver();
 			store3.on("query-success", d.rejectOnError(function () {
 				assert.strictEqual(store3.renderItems.length, 8, "gte");
@@ -187,7 +187,7 @@ define([
 				{ id: 9, name: "item 9", number: 8 });
 			var store4 = new C();
 			//store4.query = {type: "lt", values: {number: 5}};
-            store4.query = new Filter().lt("number", 5);
+			store4.query = new Filter().lt("number", 5);
 			store4.deliver();
 			store4.on("query-success", d.rejectOnError(function () {
 				assert.strictEqual(store4.renderItems.length, 1, "lt");
@@ -204,7 +204,7 @@ define([
 				{ id: 9, name: "item 9", number: 8 });
 			var store5 = new C();
 			//store5.query = {type: "lte", values: {number: 5}};
-            store5.query = new Filter().lte("number", 5);
+			store5.query = new Filter().lte("number", 5);
 			store5.deliver();
 			store5.on("query-success", d.rejectOnError(function () {
 				assert.strictEqual(store5.renderItems.length, 4, "lte");
@@ -221,7 +221,7 @@ define([
 				{ id: 9, name: "item 9", number: 8 });
 			var store6 = new C();
 			//store6.query = {type: "match", values: {name : /item/ }};
-            store6.query = new Filter().match("name", /item/);
+			store6.query = new Filter().match("name", /item/);
 			store6.deliver();
 			store6.on("query-success", d.rejectOnError(function () {
 				assert.strictEqual(store6.renderItems.length, 4, "match");
@@ -236,94 +236,94 @@ define([
 				{ id: 7, name: "itam 7", number: 8 },
 				{ id: 8, name: "item 8", number: 5 },
 				{ id: 9, name: "itam 9", number: 8 });
-            var store7 = new C();
-            //store7.query = {type: "in", values: {number : [2, 4]}};
-            store7.query = new Filter().in("number", [2, 4]);
-            store7.deliver();
-            store7.on("query-success", d.rejectOnError(function () {
-                assert.strictEqual(store7.renderItems.length, 1, "in");
-            }));
-            store7.source = new ObservableArray(
-                { id: 1, name: "itam 1", number: 8 },
-                { id: 2, name: "item 2", number: 4 },
-                { id: 3, name: "itam 3", number: 8 },
-                { id: 4, name: "item 4", number: 5 },
-                { id: 5, name: "itam 5", number: 8 },
-                { id: 6, name: "item 6", number: 5 },
-                { id: 7, name: "itam 7", number: 8 },
-                { id: 8, name: "item 8", number: 5 },
-                { id: 9, name: "itam 9", number: 8 });
-            var store8 = new C();
-            //store8.query = {type: "contains", values: {numbers : [2, 4]}};
-            store8.query = new Filter().contains("numbers", [2, 4]);
-            store8.deliver();
-            store8.on("query-success", d.rejectOnError(function () {
-                assert.strictEqual(store8.renderItems.length, 5, "contains");
-            }));
-            store8.source = new ObservableArray(
-                { id: 1, name: "itam 1", numbers: [8, 2, 4] },
-                { id: 2, name: "item 2", numbers: [8, 1, 4] },
-                { id: 3, name: "itam 3", numbers: [8, 2, 4] },
-                { id: 4, name: "item 4", numbers: [8, 1, 4] },
-                { id: 5, name: "itam 5", numbers: [8, 2, 4] },
-                { id: 6, name: "item 6", numbers: [8, 1, 4] },
-                { id: 7, name: "itam 7", numbers: [8, 2, 4] },
-                { id: 8, name: "item 8", numbers: [8, 1, 4] },
-                { id: 9, name: "itam 9", numbers: [8, 2, 4] });
-            var store9 = new C();
-            var filter1 =  new Filter().lte("number", 5);
-            var filter2 =  new Filter().gte("number", 5);
-            //store9.query = {type: "and", values: {f1: filter1, f2: filter2}};
-            store9.query = new Filter().and(filter1, filter2);
-            store9.deliver();
-            store9.on("query-success", d.rejectOnError(function () {
-                assert.strictEqual(store9.renderItems.length, 3, "and");
-            }));
-            store9.source = new ObservableArray(
-                { id: 1, name: "itam 1", number: 8 },
-                { id: 2, name: "item 2", number: 4 },
-                { id: 3, name: "itam 3", number: 8 },
-                { id: 4, name: "item 4", number: 5 },
-                { id: 5, name: "itam 5", number: 8 },
-                { id: 6, name: "item 6", number: 5 },
-                { id: 7, name: "itam 7", number: 8 },
-                { id: 8, name: "item 8", number: 5 },
-                { id: 9, name: "itam 9", number: 8 });
-            var store10 = new C();
-            filter1 =  new Filter().lte("number", 5);
-            filter2 =  new Filter().eq("id", 1);
-            store10.query = new Filter().or(filter1, filter2);
-            store10.deliver();
-            store10.on("query-success", d.rejectOnError(function () {
-                assert.strictEqual(store10.renderItems.length, 5, "or");
-            }));
-            store10.source = new ObservableArray(
-                { id: 1, name: "itam 1", number: 8 },
-                { id: 2, name: "item 2", number: 4 },
-                { id: 3, name: "itam 3", number: 8 },
-                { id: 4, name: "item 4", number: 5 },
-                { id: 5, name: "itam 5", number: 8 },
-                { id: 6, name: "item 6", number: 5 },
-                { id: 7, name: "itam 7", number: 8 },
-                { id: 8, name: "item 8", number: 5 },
-                { id: 9, name: "itam 9", number: 8 });
-            var store11 = new C();
-            store11.query = new Filter().lte("number", 5).gte("number", 5);
-            store11.deliver();
-            store11.on("query-success", d.callback(function () {
-                assert.strictEqual(store11.renderItems.length, 3, "multi query");
-            }));
-            store11.source = new ObservableArray(
-                { id: 1, name: "itam 1", number: 8 },
-                { id: 2, name: "item 2", number: 4 },
-                { id: 3, name: "itam 3", number: 8 },
-                { id: 4, name: "item 4", number: 5 },
-                { id: 5, name: "itam 5", number: 8 },
-                { id: 6, name: "item 6", number: 5 },
-                { id: 7, name: "itam 7", number: 8 },
-                { id: 8, name: "item 8", number: 5 },
-                { id: 9, name: "itam 9", number: 8 });
-            return d;
+			var store7 = new C();
+			//store7.query = {type: "in", values: {number : [2, 4]}};
+			store7.query = new Filter().in("number", [2, 4]);
+			store7.deliver();
+			store7.on("query-success", d.rejectOnError(function () {
+				assert.strictEqual(store7.renderItems.length, 1, "in");
+			}));
+			store7.source = new ObservableArray(
+				{ id: 1, name: "itam 1", number: 8 },
+				{ id: 2, name: "item 2", number: 4 },
+				{ id: 3, name: "itam 3", number: 8 },
+				{ id: 4, name: "item 4", number: 5 },
+				{ id: 5, name: "itam 5", number: 8 },
+				{ id: 6, name: "item 6", number: 5 },
+				{ id: 7, name: "itam 7", number: 8 },
+				{ id: 8, name: "item 8", number: 5 },
+				{ id: 9, name: "itam 9", number: 8 });
+			var store8 = new C();
+			//store8.query = {type: "contains", values: {numbers : [2, 4]}};
+			store8.query = new Filter().contains("numbers", [2, 4]);
+			store8.deliver();
+			store8.on("query-success", d.rejectOnError(function () {
+				assert.strictEqual(store8.renderItems.length, 5, "contains");
+			}));
+			store8.source = new ObservableArray(
+				{ id: 1, name: "itam 1", numbers: [8, 2, 4] },
+				{ id: 2, name: "item 2", numbers: [8, 1, 4] },
+				{ id: 3, name: "itam 3", numbers: [8, 2, 4] },
+				{ id: 4, name: "item 4", numbers: [8, 1, 4] },
+				{ id: 5, name: "itam 5", numbers: [8, 2, 4] },
+				{ id: 6, name: "item 6", numbers: [8, 1, 4] },
+				{ id: 7, name: "itam 7", numbers: [8, 2, 4] },
+				{ id: 8, name: "item 8", numbers: [8, 1, 4] },
+				{ id: 9, name: "itam 9", numbers: [8, 2, 4] });
+			var store9 = new C();
+			var filter1 =  new Filter().lte("number", 5);
+			var filter2 =  new Filter().gte("number", 5);
+			//store9.query = {type: "and", values: {f1: filter1, f2: filter2}};
+			store9.query = new Filter().and(filter1, filter2);
+			store9.deliver();
+			store9.on("query-success", d.rejectOnError(function () {
+				assert.strictEqual(store9.renderItems.length, 3, "and");
+			}));
+			store9.source = new ObservableArray(
+				{ id: 1, name: "itam 1", number: 8 },
+				{ id: 2, name: "item 2", number: 4 },
+				{ id: 3, name: "itam 3", number: 8 },
+				{ id: 4, name: "item 4", number: 5 },
+				{ id: 5, name: "itam 5", number: 8 },
+				{ id: 6, name: "item 6", number: 5 },
+				{ id: 7, name: "itam 7", number: 8 },
+				{ id: 8, name: "item 8", number: 5 },
+				{ id: 9, name: "itam 9", number: 8 });
+			var store10 = new C();
+			filter1 =  new Filter().lte("number", 5);
+			filter2 =  new Filter().eq("id", 1);
+			store10.query = new Filter().or(filter1, filter2);
+			store10.deliver();
+			store10.on("query-success", d.rejectOnError(function () {
+				assert.strictEqual(store10.renderItems.length, 5, "or");
+			}));
+			store10.source = new ObservableArray(
+				{ id: 1, name: "itam 1", number: 8 },
+				{ id: 2, name: "item 2", number: 4 },
+				{ id: 3, name: "itam 3", number: 8 },
+				{ id: 4, name: "item 4", number: 5 },
+				{ id: 5, name: "itam 5", number: 8 },
+				{ id: 6, name: "item 6", number: 5 },
+				{ id: 7, name: "itam 7", number: 8 },
+				{ id: 8, name: "item 8", number: 5 },
+				{ id: 9, name: "itam 9", number: 8 });
+			var store11 = new C();
+			store11.query = new Filter().lte("number", 5).gte("number", 5);
+			store11.deliver();
+			store11.on("query-success", d.callback(function () {
+				assert.strictEqual(store11.renderItems.length, 3, "multi query");
+			}));
+			store11.source = new ObservableArray(
+				{ id: 1, name: "itam 1", number: 8 },
+				{ id: 2, name: "item 2", number: 4 },
+				{ id: 3, name: "itam 3", number: 8 },
+				{ id: 4, name: "item 4", number: 5 },
+				{ id: 5, name: "itam 5", number: 8 },
+				{ id: 6, name: "item 6", number: 5 },
+				{ id: 7, name: "itam 7", number: 8 },
+				{ id: 8, name: "item 8", number: 5 },
+				{ id: 9, name: "itam 9", number: 8 });
+			return d;
 		},
 
 		StoreFuncRange: function () {
@@ -477,30 +477,30 @@ define([
 			return d;
 		},
 
-        "'new-query-asked' event": function () {
-            var d = this.async(1500);
-            var store = new C();
-            store.fetch = function (collection) {
-                return collection.fetchRange({start: 0, end: 3});
-            };
-            store.on("new-query-asked", function (evt) {
-                evt.setPromise(new Promise(function (resolve) {
-                    var arr = [
-                        { id: "foo", name: "Foo" },
-                        { id: "bar", name: "Bar" },
-                        { id: "bar2", name: "Bar2" }
-                    ];
-                    resolve(arr.slice(evt.start, evt.end));
-                }));
-            });
-            store.on("query-success", d.callback(function () {
-                assert(store.renderItems instanceof Array);
-                assert.strictEqual(store.renderItems.length, 3);
-            }));
-            store.source = new ObservableArray({ id: "foo", name: "Foo" },
-                { id: "bar", name: "Bar" });
-            return d;
-        },
+		"'new-query-asked' event": function () {
+			var d = this.async(1500);
+			var store = new C();
+			store.fetch = function (collection) {
+				return collection.fetchRange({start: 0, end: 3});
+			};
+			store.on("new-query-asked", function (evt) {
+				evt.setPromise(new Promise(function (resolve) {
+					var arr = [
+						{ id: "foo", name: "Foo" },
+						{ id: "bar", name: "Bar" },
+						{ id: "bar2", name: "Bar2" }
+					];
+					resolve(arr.slice(evt.start, evt.end));
+				}));
+			});
+			store.on("query-success", d.callback(function () {
+				assert(store.renderItems instanceof Array);
+				assert.strictEqual(store.renderItems.length, 3);
+			}));
+			store.source = new ObservableArray({ id: "foo", name: "Foo" },
+				{ id: "bar", name: "Bar" });
+			return d;
+		},
 
 		teardown: function () {
 			//container.parentNode.removeChild(container);

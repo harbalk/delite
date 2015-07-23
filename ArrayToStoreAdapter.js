@@ -43,7 +43,7 @@ define([
 		 * @member {Array}
 		 * @default null
 		 */
-        source: null,
+		source: null,
 
 		/**
 		 * A query filter to apply to the store.
@@ -53,9 +53,9 @@ define([
 		query: {},
 
 
-        /////////////////////////////////////////////////////////////////
-        // Functions dedicated to the Observability of the source
-        /////////////////////////////////////////////////////////////////
+		/////////////////////////////////////////////////////////////////
+		// Functions dedicated to the Observability of the source
+		/////////////////////////////////////////////////////////////////
 
 		/**
 		 * Called to get the collection used by the delite/Store
@@ -118,10 +118,10 @@ define([
 		 */
 		_redirectEvt: function (evt, idx) {
 			if (this._isQueried(evt.obj) && idx < 0) {
-                var evtAdded = this._addItemToCollection(evt);
+				var evtAdded = this._addItemToCollection(evt);
 				this.emit("add", evtAdded);
 			} else if (!this._isQueried(evt.obj) && idx >= 0) {
-                var evtRemoved = this._removeItemFromCollection(evt);
+				var evtRemoved = this._removeItemFromCollection(evt);
 				this.emit("delete", evtRemoved);
 			}
 		},
@@ -200,13 +200,13 @@ define([
 								oldValue: changeRecords[i].oldValue,
 								name: changeRecords[i].name
 							};
-                            var idx = this.data.indexOf(evtUpdated.obj);
-                            if (!this._isAnUpdate(evtUpdated, idx)) {
-                                this._redirectEvt(evtUpdated, idx);
-                            } else {
-                                var evt = this._updateItemInCollection(evtUpdated, idx);
-                                this.emit("update", evt);
-                            }
+							var idx = this.data.indexOf(evtUpdated.obj);
+							if (!this._isAnUpdate(evtUpdated, idx)) {
+								this._redirectEvt(evtUpdated, idx);
+							} else {
+								var evt = this._updateItemInCollection(evtUpdated, idx);
+								this.emit("update", evt);
+							}
 						}
 					}
 				}
@@ -220,85 +220,85 @@ define([
 		 */
 		_isQueried: function (item, index, tab, query) {
 			var realQuery = query ? query : this.query;
-            if (Object.getOwnPropertyNames(realQuery).length !== 0) {
-                if (typeof(realQuery) === "function") {
-                    return realQuery(item);
-                }
-                if (!(realQuery.type)) {
-                    var normalizedQuery = {};
-                    normalizedQuery.type = "eq";
-                    normalizedQuery.args = [];
-                    for (var property in realQuery) {
-                        normalizedQuery.args[0] = property;
-                        normalizedQuery.args[1] = realQuery[property];
-                    }
-                    realQuery = normalizedQuery;
-                }
-                return this._testItemProperty(realQuery.args[0], item, index, tab, realQuery);
-            } else {
-                return true;
-            }
+			if (Object.getOwnPropertyNames(realQuery).length !== 0) {
+				if (typeof(realQuery) === "function") {
+					return realQuery(item);
+				}
+				if (!(realQuery.type)) {
+					var normalizedQuery = {};
+					normalizedQuery.type = "eq";
+					normalizedQuery.args = [];
+					for (var property in realQuery) {
+						normalizedQuery.args[0] = property;
+						normalizedQuery.args[1] = realQuery[property];
+					}
+					realQuery = normalizedQuery;
+				}
+				return this._testItemProperty(realQuery.args[0], item, index, tab, realQuery);
+			} else {
+				return true;
+			}
 		},
 
-        /**
-         * Used to reduce _isQueried complexity
-         * @param prop
-         * @param i
-         * @param item
-         * @param index
-         * @param tab
-         * @param queries
-         * @returns {boolean}
-         * @private
-         */
-        /* jshint maxcomplexity: 14*/
-        _testItemProperty: function (prop, item, index, tab, query) {
-            switch (query.type) {
-            case "eq":
-                return (item[prop] === query.args[1]);
-            case "ne":
-                return (item[prop] !== query.args[1]);
-            case "lt":
-                return (item[prop] < query.args[1]);
-            case "lte":
-                return (item[prop] <= query.args[1]);
-            case "gt":
-                return (item[prop] > query.args[1]);
-            case "gte":
-                return (item[prop] >= query.args[1]);
-            case "in":
-                return ((query.args[1].indexOf(item[prop]) !== -1));
-            case "match":
-                return (query.args[1].test(item[prop]));
-            case "contains":
-                return this._arrayContains(item[prop], query.args[1]);
-            case "and":
-                return (this._isQueried(item, index, tab, query.args[0]))
-                    && (this._isQueried(item, index, tab, query.args[1]));
-            case "or":
-                return (this._isQueried(item, index, tab, query.args[0]))
-                    || (this._isQueried(item, index, tab, query.args[1]));
-            default:
-                throw new Error("Unknown filter operation '" + query.type + "'");
-            }
-        },
-        /* jshint maxcomplexity: 10*/
+		/**
+		 * Used to reduce _isQueried complexity
+		 * @param prop
+		 * @param i
+		 * @param item
+		 * @param index
+		 * @param tab
+		 * @param queries
+		 * @returns {boolean}
+		 * @private
+		 */
+		/* jshint maxcomplexity: 14*/
+		_testItemProperty: function (prop, item, index, tab, query) {
+			switch (query.type) {
+			case "eq":
+				return item[prop] === query.args[1];
+			case "ne":
+				return item[prop] !== query.args[1];
+			case "lt":
+				return item[prop] < query.args[1];
+			case "lte":
+				return item[prop] <= query.args[1];
+			case "gt":
+				return item[prop] > query.args[1];
+			case "gte":
+				return item[prop] >= query.args[1];
+			case "in":
+				return (query.args[1].indexOf(item[prop]) !== -1);
+			case "match":
+				return query.args[1].test(item[prop]);
+			case "contains":
+				return this._arrayContains(item[prop], query.args[1]);
+			case "and":
+				return this._isQueried(item, index, tab, query.args[0])
+					&& this._isQueried(item, index, tab, query.args[1]);
+			case "or":
+				return this._isQueried(item, index, tab, query.args[0])
+					|| this._isQueried(item, index, tab, query.args[1]);
+			default:
+				throw new Error("Unknown filter operation '" + query.type + "'");
+			}
+		},
+		/* jshint maxcomplexity: 10*/
 
-        /**
-         * Function to test if an array contains all the values in parameter values
-         * @param array
-         * @param values
-         * @returns {*}
-         * @private
-         */
-        _arrayContains: function (array, values) {
-            for (var j = 0; j < values.length; j++) {
-                if (array.indexOf(values[j]) === -1) {
-                    return false;
-                }
-            }
-            return true;
-        },
+		/**
+		 * Function to test if an array contains all the values in parameter values
+		 * @param array
+		 * @param values
+		 * @returns {*}
+		 * @private
+		 */
+		_arrayContains: function (array, values) {
+			for (var j = 0; j < values.length; j++) {
+				if (array.indexOf(values[j]) === -1) {
+					return false;
+				}
+			}
+			return true;
+		},
 
 		/**
 		 * Synchronously deliver change records to all listeners registered via `observe()`.
@@ -341,36 +341,36 @@ define([
 		},
 
 
-        /////////////////////////////////////////////////////////////////////////
-        // Functions dedicated to reproduce the behaviour of dstore functions
-        /////////////////////////////////////////////////////////////////////////
+		/////////////////////////////////////////////////////////////////////////
+		// Functions dedicated to reproduce the behaviour of dstore functions
+		/////////////////////////////////////////////////////////////////////////
 
-        /**
-         * Called to perform the fetch operation on the collection.
-         * @protected
-         */
-        fetch: function () {
-            return Promise.resolve(this.data);
-        },
+		/**
+		 * Called to perform the fetch operation on the collection.
+		 * @protected
+		 */
+		fetch: function () {
+			return Promise.resolve(this.data);
+		},
 
-        /**
-         * Called to perform the fetchRange operation on the collection.
-         * @param {args} - contains the start index and the end index of the fetch
-         * @protected
-         */
-        fetchRange: function (args) {
-            var res = this.data.slice(args.start, args.end);
-            if (res.length < (args.end - args.start)) {
-                var promise;
-                var evt = {start: args.start, end: args.end, resLength: res.length, setPromise: function (pro) {
-                    promise = pro;
-                }};
-                this.emit("_new-query-asked", evt);
-                return promise;
-            } else {
-                return Promise.resolve(res);
-            }
-        },
+		/**
+		 * Called to perform the fetchRange operation on the collection.
+		 * @param {args} - contains the start index and the end index of the fetch
+		 * @protected
+		 */
+		fetchRange: function (args) {
+			var res = this.data.slice(args.start, args.end);
+			if (res.length < (args.end - args.start)) {
+				var promise;
+				var evt = {start: args.start, end: args.end, resLength: res.length, setPromise: function (pro) {
+					promise = pro;
+				}};
+				this.emit("_new-query-asked", evt);
+				return promise;
+			} else {
+				return Promise.resolve(res);
+			}
+		},
 
 		/**
 		 * Set the identity of an object
