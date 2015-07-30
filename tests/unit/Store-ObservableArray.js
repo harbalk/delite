@@ -4,7 +4,7 @@ define([
 	"decor/Observable", "decor/ObservableArray", "dstore/Filter", "requirejs-dplugins/Promise!"
 ], function (registerSuite, assert, dcl, declare, register, Widget, Store,
 			 Observable, ObservableArray, Filter, Promise) {
-	var C = register("test-store-observableArray", [HTMLElement, Widget, Store]);
+	var C = register("test-store-observablearray", [HTMLElement, Widget, Store]);
 	registerSuite({
 		name: "Store-ObservableArray",
 
