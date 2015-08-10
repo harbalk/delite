@@ -20,6 +20,8 @@ define({
 		{ browserName: "firefox", version: "31", platform: "Windows 7", name : "delite" },
 		{ browserName: "chrome", version: "36", platform: "Windows 7", name : "delite" },
 		{ browserName: "safari", version: "7", platform: "OS X 10.9", name : "delite" },
+        { browserName: "firefox", version: "31", platform: "OS X 10.9", name : "delite" },
+        { browserName: "chrome", version: "36", platform: "OS X 10.9", name : "delite" },
 
 		// Mobile
 		{ platformName: "iOS", platformVersion: "7.1", browserName: "safari", deviceName: "iPhone Simulator",
